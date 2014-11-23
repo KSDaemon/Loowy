@@ -124,7 +124,7 @@ function _M.new(url, opts)
 		sessionId = nil,
 
 		-- Server WAMP roles and features
-		server_wamp_features = {
+		serverWampFeatures = {
 			roles = {}
 		},
 
