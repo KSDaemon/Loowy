@@ -231,7 +231,7 @@ function _M.new(url, opts)
 	local function _getReqId()
 		local reqId
 
-		math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable
+		math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, use posix
 
 		repeat
 			-- regId = math.random(9007199254740992)    -- returns numbers in scientific format after encoding :(
@@ -255,7 +255,7 @@ function _M.new(url, opts)
 	-- @return boolean
 	-------------------------
 	local function _validateURI(uri)
-		-- create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
+		-- TODO create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
 		if string.find(uri, "^.$") == nil or string.find(uri, "wamp") == 1 then
 			return false
 		else
@@ -296,6 +296,27 @@ function _M.new(url, opts)
 	-- Reset internal state and cache
 	----------------------------------
 	local function _resetState()
+		wsQueue = {}
+		requests = {}
+		calls = {}
+		subscriptions = {}
+		subsTopics = {}
+		rpcRegs = {}
+		rpcNames = {}
+
+		cache = {
+			sessionId = nil,
+			serverWampFeatures = {
+				roles = {}
+			},
+			isSayingGoodbye = false,
+			opStatus = {
+				code = 0,
+				description = 'Success!'
+			},
+			timer = nil,
+			reconnectingAttempts = 0
+		}
 
 	end
 
@@ -326,6 +347,60 @@ function _M.new(url, opts)
 	-- event - received data
 	-------------------------------------------
 	local function _wsOnMessage(event)
+		local data, id, i, d, result, msg;
+
+		data = _decode(event);
+
+		if data[1] == WAMP_MSG_SPEC.WELCOME then
+
+		elseif data[1] == WAMP_MSG_SPEC.ABORT then
+
+		elseif data[1] == WAMP_MSG_SPEC.CHALLENGE then
+
+		elseif data[1] == WAMP_MSG_SPEC.GOODBYE then
+
+		elseif data[1] == WAMP_MSG_SPEC.HEARTBEAT then
+
+		elseif data[1] == WAMP_MSG_SPEC.ERROR then
+
+			if data[2] == WAMP_MSG_SPEC.SUBSCRIBE or
+				data[2] == WAMP_MSG_SPEC.UNSUBSCRIBE then
+
+			elseif data[2] == WAMP_MSG_SPEC.PUBLISH then
+
+			elseif data[2] == WAMP_MSG_SPEC.REGISTER or
+				data[2] == WAMP_MSG_SPEC.UNREGISTER then
+
+			elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
+
+			elseif data[2] == WAMP_MSG_SPEC.CALL then
+
+			end
+		elseif data[1] == WAMP_MSG_SPEC.SUBSCRIBED then
+
+		elseif data[1] == WAMP_MSG_SPEC.UNSUBSCRIBED then
+
+		elseif data[1] == WAMP_MSG_SPEC.PUBLISHED then
+
+		elseif data[1] == WAMP_MSG_SPEC.EVENT then
+
+		elseif data[1] == WAMP_MSG_SPEC.RESULT then
+
+		elseif data[1] == WAMP_MSG_SPEC.REGISTER then
+
+		elseif data[1] == WAMP_MSG_SPEC.REGISTERED then
+
+		elseif data[1] == WAMP_MSG_SPEC.UNREGISTER then
+
+		elseif data[1] == WAMP_MSG_SPEC.UNREGISTERED then
+
+		elseif data[1] == WAMP_MSG_SPEC.INVOCATION then
+
+		elseif data[1] == WAMP_MSG_SPEC.INTERRUPT then
+
+		elseif data[1] == WAMP_MSG_SPEC.YIELD then
+
+		end
 
 	end
 
@@ -335,14 +410,23 @@ function _M.new(url, opts)
 	-- error - received error
 	-------------------------------------------
 	local function _wsOnError(error)
-
+		if type(options.onError) == 'function' then
+			options.onError(options.onError, error)
+		end
 	end
 
 	-------------------------------------------
 	-- Reconnection to WAMP server
 	-------------------------------------------
 	local function _wsReconnect()
+		if type(options.onReconnect) == 'function' then
+			options.onReconnect()
+		end
 
+		cache.reconnectingAttempts = cache.reconnectingAttempts + 1
+		-- TODO Try to establish connection
+
+		_initWsCallbacks()
 	end
 
 	-------------------------------------------
