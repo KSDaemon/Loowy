@@ -264,6 +264,27 @@ function _M.new(url, opts)
 	end
 
 	--------------------------------------------
+	-- Return index of obj in array t
+	--
+	-- t - array table
+	-- obj - object to search
+	-- @return index of obj or -1 if not found
+	--------------------------------------------
+	local function arrayIndexOf(t, obj)
+		if type(t) == 'table' then
+			for i = 1, #t do
+				if t[i] == object then
+					return i
+				end
+			end
+
+			return -1
+		else
+			error("table.indexOf expects table for first argument, " .. type(t) .. " given")
+		end
+	end
+
+	--------------------------------------------
 	-- Encode WAMP message
 	--
 	-- msg - message to encode
@@ -433,14 +454,28 @@ function _M.new(url, opts)
 	-- Renew subscriptions after reconnection to WAMP server
 	-------------------------------------------
 	local function _renewSubscriptions()
+		local subs, st = subscriptions, subsTopics
 
+		subscriptions, subsTopics = {}, {}
+
+		for k, v in ipairs(st) do
+			for kk, vv in ipairs(subs[v].callbacks) do
+				self:subscribe(v, vv)
+			end
+		end
 	end
 
 	-------------------------------------------
 	-- Renew RPC registrations after reconnection to WAMP server
 	-------------------------------------------
 	local function _renewRegistrations()
+		local rpcs, rn = rpcRegs, rpcNames
 
+		rpcRegs, rpcNames = {}, {}
+
+		for k, v in ipairs(rn) do
+			self:register(v, { rpc = rpcs[v].callbacks[0] })
+		end
 	end
 
 	-----------------------------------
@@ -521,6 +556,64 @@ function _M.new(url, opts)
 	--                             onEvent: will be called on receiving published event }
 	-------------------------------------------------------------------------------------------
 	function loowy:subscribe(topicURI, callbacks)
+		local reqId
+
+		if cache.sessionId and not cache.serverWampFeatures.roles.broker then
+			cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not _validateURI(topicURI) then
+			cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(callbacks) == 'function' then
+			callbacks = { onEvent = callbacks }
+		elseif type(callbacks.onEvent) == 'function' then
+			-- nothing to do
+		else
+			cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not subscriptions[topicURI] then     -- no such subscription
+
+			reqId = _getReqId()
+
+			requests[reqId] = { topic = topicURI, callbacks: callbacks }
+
+			-- WAMP SPEC: [SUBSCRIBE, Request|id, Options|dict, Topic|uri]
+			_send({ WAMP_MSG_SPEC.SUBSCRIBE, reqId, {}, topicURI })
+
+		else    -- already have subscription to this topic
+			-- There is no such callback yet
+			if arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent) < 0 then
+				table.insert(subscriptions[topicURI].callbacks, callbacks.onEvent)
+			end
+
+			if type(callbacks.onSuccess) == 'function' then
+				callbacks.onSuccess()
+			end
+
+		end
+
+		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
 
 	end
 
@@ -534,6 +627,58 @@ function _M.new(url, opts)
 	--                             onError: will be called if unsubscribe would be aborted }
 	---------------------------------------------------------------------------------------------
 	function loowy:unsubscribe(topicURI, callbacks)
+		local reqId, i
+
+		if cache.sessionId and not cache.serverWampFeatures.roles.broker then
+			cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if subscriptions[topicURI] then
+
+			reqId = _getReqId()
+
+			if callbacks == nil then
+				subscriptions[topicURI].callbacks = {}
+				callbacks = {}
+			elseif type(callbacks) == 'function' then
+				i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks)
+				callbacks = { onEvent: callbacks }
+			else
+				i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent)
+			end
+
+			if i > 0 then
+				table.remove(subscriptions[topicURI].callbacks, i)
+			end
+
+			if #subscriptions[topicURI].callbacks > 0 then
+				-- There are another callbacks for this topic
+				cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+
+				return
+			end
+
+			requests[reqId] = { topic = topicURI, callbacks = callbacks }
+
+			-- WAMP_SPEC: [UNSUBSCRIBE, Request|id, SUBSCRIBED.Subscription|id]
+			_send({ WAMP_MSG_SPEC.UNSUBSCRIBE, reqId, subscriptions[topicURI].id })
+		else
+			cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_UNSUBSCRIBE
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
 
 	end
 
@@ -554,7 +699,84 @@ function _M.new(url, opts)
 	--                                  to receivers of a published event }
 	----------------------------------------------------------------------------------------------------------------
 	function loowy:publish(topicURI, payload, callbacks, advancedOptions)
+		local reqId, msg
+		local options = {}
+		local err = false
 
+		if cache.sessionId and not cache.serverWampFeatures.roles.broker then
+			cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not _validateURI(topicURI) then
+			cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(callbacks) == 'table' then
+			options.acknowledge = true
+		end
+
+		if type(advancedOptions) == 'table' then
+
+			if advancedOptions.exclude then
+				if type(advancedOptions.exclude) == 'table' then
+					options.exclude = advancedOptions.exclude
+				elseif type(advancedOptions.exclude) == 'number' then
+					options.exclude = { advancedOptions.exclude }
+				else
+					err = true
+				end
+			end
+
+			if advancedOptions.eligible then
+				if type(advancedOptions.eligible) == 'table' then
+					options.eligible = advancedOptions.eligible
+				elseif type(advancedOptions.eligible) == 'number' then
+					options.eligible = { advancedOptions.eligible }
+				else
+					err = true
+				end
+			end
+
+			if advancedOptions.exclude_me then
+				options.exclude_me = advancedOptions.exclude_me ~= false
+			end
+
+			if advancedOptions.disclose_me then
+				options.disclose_me = advancedOptions.disclose_me == true
+			end
+
+		end
+
+		reqId = _getReqId()
+
+		if payload == nil and callbacks == nil and advancedOptions == nil then
+			-- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri]
+			msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
+		elseif callbacks == nil and advancedOptions == nil then
+			-- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list (, ArgumentsKw|dict)]
+			if payload[1] ~= nil then -- assume it's an array
+				msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
+			elseif type(payload) == 'table' then    -- it's a dict
+				msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, {}, payload }
+			else    -- assume it's a single value
+				msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
+			end
+		end
+
+		_send(msg)
+		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
 	end
 
 	--------------------------------------------------------------------------------------------------------------------
