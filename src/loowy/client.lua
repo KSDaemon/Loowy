@@ -881,6 +881,49 @@ function _M.new(url, opts)
 	--                            onError: will be called if unregistration would be aborted }
 	-------------------------------------------------------------------------------------------
 	function loowy:unregister(topicURI, callbacks)
+		local reqId
+
+		if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
+			cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not _validateURI(topicURI) then
+			cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(callbacks) == 'function' then
+			callbacks = { onSuccess = callbacks }
+		end
+
+		if rpcRegs[topicURI] then   -- there is such registration
+
+			reqId = _getReqId()
+
+			requests[reqId] = { topic = topicURI, callbacks: callbacks }
+
+			-- WAMP SPEC: [UNREGISTER, Request|id, REGISTERED.Registration|id]
+			_send({ WAMP_MSG_SPEC.UNREGISTER, reqId, rpcRegs[topicURI].id })
+			cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+		else    -- already have registration with such topicURI
+
+			cache.opStatus = WAMP_ERROR_MSG.RPC_ALREADY_REGISTERED
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+		end
 
 	end
 
