@@ -812,6 +812,62 @@ function _M.new(url, opts)
 	--                             onError: will be called if registration would be aborted }
 	------------------------------------------------------------------------------------------
 	function loowy:register(topicURI, callbacks)
+		local reqId
+
+		if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
+			cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not _validateURI(topicURI) then
+			cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(callbacks) == 'function' then
+			callbacks = { rpc = callbacks }
+		elseif type(callbacks.rpc) == 'function' then
+			-- nothing to do
+		else
+			cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not rpcRegs[topicURI] then     -- no such registration
+
+			reqId = _getReqId()
+
+			requests[reqId] = { topic = topicURI, callbacks: callbacks }
+
+			-- WAMP SPEC: [REGISTER, Request|id, Options|dict, Procedure|uri]
+			_send({ WAMP_MSG_SPEC.REGISTER, reqId, {}, topicURI })
+
+		else    -- already have registration with such topicURI
+
+			cache.opStatus = WAMP_ERROR_MSG.RPC_ALREADY_REGISTERED
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+		end
+
+		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
 
 	end
 
