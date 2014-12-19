@@ -757,6 +757,17 @@ function _M.new(url, opts)
 				options.disclose_me = advancedOptions.disclose_me == true
 			end
 
+			if err then
+
+				cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
+
+				if type(callbacks.onError) == 'function' then
+					callbacks.onError(cache.opStatus.description)
+				end
+
+				return
+			end
+
 		end
 
 		reqId = _getReqId()
@@ -777,6 +788,7 @@ function _M.new(url, opts)
 
 		_send(msg)
 		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+
 	end
 
 	--------------------------------------------------------------------------------------------------------------------
@@ -798,6 +810,107 @@ function _M.new(url, opts)
 	--                                  to endpoints of a routed call }
 	--------------------------------------------------------------------------------------------------------------------
 	function loowy:call(topicURI, payload, callbacks, advancedOptions)
+		local reqId, msg
+		local options = {}
+		local err = false
+
+		if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
+			cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if not _validateURI(topicURI) then
+			cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(callbacks) == 'function' then
+			callbacks = { onSuccess = callbacks }
+		elseif type(callbacks.onSuccess) == 'function' then
+			-- nothing to do
+		else
+			cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
+
+			if type(callbacks.onError) == 'function' then
+				callbacks.onError(cache.opStatus.description)
+			end
+
+			return
+		end
+
+		if type(advancedOptions) == 'table' then
+
+			if advancedOptions.exclude then
+				if type(advancedOptions.exclude) == 'table' then
+					options.exclude = advancedOptions.exclude
+				elseif type(advancedOptions.exclude) == 'number' then
+					options.exclude = { advancedOptions.exclude }
+				else
+					err = true
+				end
+			end
+
+			if advancedOptions.eligible then
+				if type(advancedOptions.eligible) == 'table' then
+					options.eligible = advancedOptions.eligible
+				elseif type(advancedOptions.eligible) == 'number' then
+					options.eligible = { advancedOptions.eligible }
+				else
+					err = true
+				end
+			end
+
+			if advancedOptions.exclude_me then
+				options.exclude_me = advancedOptions.exclude_me ~= false
+			end
+
+			if advancedOptions.disclose_me then
+				options.disclose_me = advancedOptions.disclose_me == true
+			end
+
+			if err then
+
+				cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
+
+				if type(callbacks.onError) == 'function' then
+					callbacks.onError(cache.opStatus.description)
+				end
+
+				return
+			end
+
+		end
+
+		repeat
+			reqId = _getReqId()
+		until calls[reqId] ~= nil
+
+		calls[reqId] = callbacks
+
+		-- WAMP SPEC: [CALL, Request|id, Options|dict, Procedure|uri, (Arguments|list, ArgumentsKw|dict)]
+
+		if payload == nil  then
+			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI }
+		elseif payload[1] ~= nil then -- assume it's an array
+			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
+		elseif type(payload) == 'table' then    -- it's a dict
+			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {}, payload }
+		else -- assume it's a single value
+			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {payload} }
+		end
+
+		_send(msg)
+		cache.opStatus = WAMP_ERROR_MSG.SUCCESS
 
 	end
 
