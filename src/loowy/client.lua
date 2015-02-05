@@ -291,7 +291,17 @@ function _M.new(url, opts)
 	-- @return encoder specific encoded message
 	--------------------------------------------
 	local function _encode(msg)
+		local dataObj
 
+		if options.transportEncoding == 'msgpack' then
+			local mp = require 'MessagePack'
+			dataObj = mp.pack(msg)
+		else        -- json
+			local cjson = require "cjson"
+			dataObj = cjson.encode(msg)
+		end
+
+		return dataObj
 	end
 
 	--------------------------------------------
@@ -301,7 +311,17 @@ function _M.new(url, opts)
 	-- @return encoder specific decoded message
 	--------------------------------------------
 	local function _decode(msg)
+		local dataObj
 
+		if options.transportEncoding == 'msgpack' then
+			local mp = require 'MessagePack'
+			dataObj = mp.unpack(msg)
+		else        -- json
+			local cjson = require "cjson"
+			dataObj = cjson.decode(msg)
+		end
+
+		return dataObj
 	end
 
 	--------------------------------------------
@@ -906,7 +926,7 @@ function _M.new(url, opts)
 		elseif type(payload) == 'table' then    -- it's a dict
 			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {}, payload }
 		else -- assume it's a single value
-			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {payload} }
+			msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
 		end
 
 		_send(msg)
