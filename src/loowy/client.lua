@@ -362,7 +362,7 @@ function _M.new(url, opts)
 	end
 
 	-------------------------------------------
-	-- Initialize internal websocket callbacks
+	-- Initialize internal callbacks
 	-------------------------------------------
 	local function _initWsCallbacks()
 
@@ -379,7 +379,18 @@ function _M.new(url, opts)
 	-- Connection close callback
 	-------------------------------------------
 	local function _wsOnClose()
+		if (cache.sessionId or cache.reconnectingAttempts) and options.autoReconnect and
+			cache.reconnectingAttempts < options.maxRetries and not cache.isSayingGoodbye then
+			cache.sessionId = nil
+			-- TODO wait for options.reconnectInterval and then reconnect
+		else
+			if type(options.onClose) == 'function' then
+				options.onClose()
+			end
 
+			_resetState()
+			ws = nil
+		end
 	end
 
 	-------------------------------------------
