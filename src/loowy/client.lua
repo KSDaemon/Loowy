@@ -18,28 +18,25 @@ local _M = {
 
 -- _M.__index = _M -- I think don't needed
 
--- Get Wamp client suported features
-function _M.getWampFeatures()
-    return {
-        agent = "Loowy/Lua v0.0.1",
-        roles = {
-            broker = {
-                features = {
-                    subscriber_blackwhite_listing = true,
-                    publisher_exclusion = true,
-                    publisher_identification = true
-                }
-            },
-            dealer = {
-                features = {
-                    callee_blackwhite_listing = true,
-                    caller_exclusion = true,
-                    caller_identification = true
-                }
+local WAMP_FEATURES = {
+    agent = "Loowy/Lua v0.0.1",
+    roles = {
+        broker = {
+            features = {
+                subscriber_blackwhite_listing = true,
+                publisher_exclusion = true,
+                publisher_identification = true
+            }
+        },
+        dealer = {
+            features = {
+                callee_blackwhite_listing = true,
+                caller_exclusion = true,
+                caller_identification = true
             }
         }
     }
-end
+}
 
 local WAMP_MSG_SPEC = {
     HELLO = 1,
@@ -89,7 +86,8 @@ local WAMP_ERROR_MSG = {
     NON_EXIST_RPC_REG = { code = 16, description = "Received rpc registration confirmation for non existent rpc!" },
     NON_EXIST_RPC_UNREG = { code = 17, description = "Received rpc unregistration confirmation for non existent rpc!" },
     NON_EXIST_RPC_ERROR = { code = 18, description = "Received error for non existent rpc!" },
-    NON_EXIST_RPC_INVOCATION = { code = 19, description = "Received invocation for non existent rpc!" }
+    NON_EXIST_RPC_INVOCATION = { code = 19, description = "Received invocation for non existent rpc!" },
+    NON_EXIST_RPC_REQ_ID = { code = 20, description = "No RPC calls in action with specified request ID!" }
 }
 
 -- Loowy client class
@@ -362,23 +360,22 @@ function _M.new(url, opts)
     end
 
     -------------------------------------------
-    -- Initialize internal callbacks
-    -------------------------------------------
-    local function _initWsCallbacks()
-
-    end
-
-    -------------------------------------------
     -- Connection open callback
     -------------------------------------------
     local function _wsOnOpen()
+        print('websocket OnOpen event fired')
 
+        options.transportEncoding = 'json'
+
+        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }))
     end
 
     -------------------------------------------
     -- Connection close callback
     -------------------------------------------
     local function _wsOnClose()
+        print('websocket OnClose event fired')
+
         if (cache.sessionId or cache.reconnectingAttempts) and options.autoReconnect and
             cache.reconnectingAttempts < options.maxRetries and not cache.isSayingGoodbye then
             cache.sessionId = nil
@@ -400,6 +397,9 @@ function _M.new(url, opts)
     -------------------------------------------
     local function _wsOnMessage(event)
         local data, id, i, d, result, msg;
+
+        print('websocket OnMessage event fired')
+        print('Message received: ' .. event)
 
         data = _decode(event);
 
@@ -462,9 +462,29 @@ function _M.new(url, opts)
     -- error - received error
     -------------------------------------------
     local function _wsOnError(error)
+        print('websocket OnError event fired')
+
         if type(options.onError) == 'function' then
             options.onError(options.onError, error)
         end
+    end
+
+    -------------------------------------------
+    -- Initialize internal callbacks
+    -------------------------------------------
+    local function _initWsCallbacks()
+        ws:on_open(function(ws)
+            _wsOnOpen()
+        end)
+        ws:on_close(function(ws, was_clean,code,reason)
+            _wsOnClose()
+        end)
+        ws:on_message(function(ws, msg)
+            _wsOnMessage(msg)
+        end)
+        ws:on_error(function(ws,err)
+            _wsOnError(err)
+        end)
     end
 
     -------------------------------------------
@@ -627,7 +647,7 @@ function _M.new(url, opts)
 
             reqId = _getReqId()
 
-            requests[reqId] = { topic = topicURI, callbacks: callbacks }
+            requests[reqId] = { topic = topicURI, callbacks = callbacks }
 
             -- WAMP SPEC: [SUBSCRIBE, Request|id, Options|dict, Topic|uri]
             _send({ WAMP_MSG_SPEC.SUBSCRIBE, reqId, {}, topicURI })
@@ -679,7 +699,7 @@ function _M.new(url, opts)
                 callbacks = {}
             elseif type(callbacks) == 'function' then
                 i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks)
-                callbacks = { onEvent: callbacks }
+                callbacks = { onEvent = callbacks }
             else
                 i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent)
             end
@@ -996,7 +1016,7 @@ function _M.new(url, opts)
 
             reqId = _getReqId()
 
-            requests[reqId] = { topic = topicURI, callbacks: callbacks }
+            requests[reqId] = { topic = topicURI, callbacks = callbacks }
 
             -- WAMP SPEC: [REGISTER, Request|id, Options|dict, Procedure|uri]
             _send({ WAMP_MSG_SPEC.REGISTER, reqId, {}, topicURI })
@@ -1055,7 +1075,7 @@ function _M.new(url, opts)
 
             reqId = _getReqId()
 
-            requests[reqId] = { topic = topicURI, callbacks: callbacks }
+            requests[reqId] = { topic = topicURI, callbacks = callbacks }
 
             -- WAMP SPEC: [UNREGISTER, Request|id, REGISTERED.Registration|id]
             _send({ WAMP_MSG_SPEC.UNREGISTER, reqId, rpcRegs[topicURI].id })
@@ -1086,6 +1106,13 @@ function _M.new(url, opts)
             options[k] = v
         end
     end
+
+    -- getting instance of ws client
+    ws = require('websocket.client').ev()
+
+    _setWsProtocols()
+    ws:connect(url, cache.protocols)
+    _initWsCallbacks()
 
     return loowy
 end
