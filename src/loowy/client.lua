@@ -271,7 +271,7 @@ function _M.new(url, opts)
     local function arrayIndexOf(t, obj)
         if type(t) == 'table' then
             for i = 1, #t do
-                if t[i] == object then
+                if t[i] == obj then
                     return i
                 end
             end
