@@ -182,9 +182,9 @@ function _M.new(url, opts)
         -- @type boolean
         autoReconnect = true,
 
-        -- Reconnecting interval (in ms)
+        -- Reconnecting interval (in seconds)
         -- @type number
-        reconnectInterval = 2 * 1000,
+        reconnectInterval = 2,
 
         -- Maximum reconnection retries
         -- @type number
@@ -222,6 +222,8 @@ function _M.new(url, opts)
     ----------------------------
     -- Instance private methods
     ----------------------------
+
+    local _wsReconnect
 
     ---------------------------------
     -- Get the new unique request id
@@ -328,7 +330,15 @@ function _M.new(url, opts)
     -- msg - message to send
     --------------------------------------------
     local function _send(msg)
+        if msg ~= nil then
+            table.insert(wsQueue, _encode(msg))
+        end
 
+        if ws ~= nil and ws.state == 'OPEN' and cache.sessionId ~= nil then
+            while #wsQueue > 0 do
+                ws:send(table.remove(wsQueue, 1))
+            end
+        end
     end
 
     ----------------------------------
@@ -365,6 +375,13 @@ function _M.new(url, opts)
     local function _wsOnOpen()
         print('websocket OnOpen event fired')
 
+        if cache.timer ~= nil then
+            local ev = require 'ev'
+            cache.timer:stop(ev.Loop.default)
+            cache.timer = nil
+        end
+
+        -- TODO Get transport from ws response headers (not implemented in lua-websocket right now)
         options.transportEncoding = 'json'
 
         ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }))
@@ -379,7 +396,9 @@ function _M.new(url, opts)
         if (cache.sessionId or cache.reconnectingAttempts) and options.autoReconnect and
             cache.reconnectingAttempts < options.maxRetries and not cache.isSayingGoodbye then
             cache.sessionId = nil
-            -- TODO wait for options.reconnectInterval and then reconnect
+            local ev = require 'ev'
+            cache.timer = ev.Timer.new(_wsReconnect, options.reconnectInterval, options.reconnectInterval)
+            cache.timer:start(ev.Loop.default)
         else
             if type(options.onClose) == 'function' then
                 options.onClose()
@@ -490,14 +509,17 @@ function _M.new(url, opts)
     -------------------------------------------
     -- Reconnection to WAMP server
     -------------------------------------------
-    local function _wsReconnect()
+    _wsReconnect = function ()
+        print('Reconnecting to websocket...')
+
         if type(options.onReconnect) == 'function' then
             options.onReconnect()
         end
 
         cache.reconnectingAttempts = cache.reconnectingAttempts + 1
-        -- TODO Try to establish connection
 
+        ws = require('websocket.client').ev()
+        ws:connect(cache.url, cache.protocols)
         _initWsCallbacks()
     end
 
@@ -511,7 +533,7 @@ function _M.new(url, opts)
 
         for k, v in ipairs(st) do
             for kk, vv in ipairs(subs[v].callbacks) do
-                self:subscribe(v, vv)
+                loowy:subscribe(v, vv)
             end
         end
     end
@@ -525,7 +547,7 @@ function _M.new(url, opts)
         rpcRegs, rpcNames = {}, {}
 
         for k, v in ipairs(rn) do
-            self:register(v, { rpc = rpcs[v].callbacks[0] })
+            loowy:register(v, { rpc = rpcs[v].callbacks[0] })
         end
     end
 
