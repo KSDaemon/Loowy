@@ -396,6 +396,7 @@ function _M.new(url, opts)
         if (cache.sessionId or cache.reconnectingAttempts) and options.autoReconnect and
             cache.reconnectingAttempts < options.maxRetries and not cache.isSayingGoodbye then
             cache.sessionId = nil
+            cache.reconnectingAttempts = cache.reconnectingAttempts + 1
             local ev = require 'ev'
             cache.timer = ev.Timer.new(_wsReconnect, options.reconnectInterval, options.reconnectInterval)
             cache.timer:start(ev.Loop.default)
@@ -510,17 +511,32 @@ function _M.new(url, opts)
     -- Reconnection to WAMP server
     -------------------------------------------
     _wsReconnect = function ()
-        print('Reconnecting to websocket...')
+        print('Reconnecting to websocket... Attempt No ' .. cache.reconnectingAttempts)
 
-        if type(options.onReconnect) == 'function' then
-            options.onReconnect()
+        if cache.reconnectingAttempts >= options.maxRetries then
+            if cache.timer ~= nil then
+                local ev = require 'ev'
+                cache.timer:stop(ev.Loop.default)
+                cache.timer = nil
+            end
+
+            if type(options.onClose) == 'function' then
+                options.onClose()
+            end
+
+            _resetState()
+            ws = nil
+        else
+            if type(options.onReconnect) == 'function' then
+                options.onReconnect()
+            end
+
+            cache.reconnectingAttempts = cache.reconnectingAttempts + 1
+
+            ws = require('websocket.client').ev()
+            ws:connect(cache.url, cache.protocols)
+            _initWsCallbacks()
         end
-
-        cache.reconnectingAttempts = cache.reconnectingAttempts + 1
-
-        ws = require('websocket.client').ev()
-        ws:connect(cache.url, cache.protocols)
-        _initWsCallbacks()
     end
 
     -------------------------------------------
@@ -601,21 +617,45 @@ function _M.new(url, opts)
     -- url - WAMP Server url (optional)
     ------------------------------------
     function loowy:connect(url)
+        if url ~= nil then
+            cache.url = url
+        end
 
+        _setWsProtocols()
+        ws = require('websocket.client').ev()
+        ws:connect(url, cache.protocols)
+        _initWsCallbacks()
     end
 
     ---------------------------
     -- Disconnect from server
     ---------------------------
     function loowy:disconnect()
+        if cache.sessionId ~= nil then
+            -- need to send goodbye message to server
+            cache.isSayingGoodbye = true
+            _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.error.system_shutdown' })
+        elseif ws ~= nil then
+            ws:close()
+            ws = nil
+        end
 
+        cache.opStatus = WAMP_ERROR_MSG.SUCCESS
     end
 
     ------------------------------------
     -- Abort WAMP session establishment
     ------------------------------------
     function loowy:abort()
+        if not cache.sessionId and ws.state == 'OPEN' then
+            _send({ WAMP_MSG_SPEC.ABORT, {}, 'wamp.error.abort' })
+            cache.sessionId = nil
+        end
 
+        ws:close()
+        ws = nil
+
+        cache.opStatus = WAMP_ERROR_MSG.SUCCESS
     end
 
     -------------------------------------------------------------------------------------------
