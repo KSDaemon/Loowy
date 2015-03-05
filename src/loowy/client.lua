@@ -255,6 +255,7 @@ function _M.new(url, opts)
     -- @return boolean
     -------------------------
     local function _validateURI(uri)
+
         -- TODO create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
         if string.find(uri, "^.$") == nil or string.find(uri, "wamp") == 1 then
             return false
@@ -411,6 +412,34 @@ function _M.new(url, opts)
     end
 
     -------------------------------------------
+    -- Renew subscriptions after reconnection to WAMP server
+    -------------------------------------------
+    local function _renewSubscriptions()
+        local subs, st = subscriptions, subsTopics
+
+        subscriptions, subsTopics = {}, {}
+
+        for k, v in ipairs(st) do
+            for kk, vv in ipairs(subs[v].callbacks) do
+                loowy:subscribe(v, vv)
+            end
+        end
+    end
+
+    -------------------------------------------
+    -- Renew RPC registrations after reconnection to WAMP server
+    -------------------------------------------
+    local function _renewRegistrations()
+        local rpcs, rn = rpcRegs, rpcNames
+
+        rpcRegs, rpcNames = {}, {}
+
+        for k, v in ipairs(rn) do
+            loowy:register(v, { rpc = rpcs[v].callbacks[0] })
+        end
+    end
+
+    -------------------------------------------
     -- Connection message callback
     --
     -- event - received data
@@ -424,16 +453,54 @@ function _M.new(url, opts)
         data = _decode(event);
 
         if data[1] == WAMP_MSG_SPEC.WELCOME then
+            -- WAMP SPEC: [WELCOME, Session|id, Details|dict]
+
+            cache.sessionId = data[2]
+            cache.serverWampFeatures = data[3]
+
+            if type(options.onConnect) == 'function' then
+                options.onConnect()
+            end
+
+            if cache.reconnectingAttempts > 0 then
+                -- There was reconnection
+                cache.reconnectingAttempts = 0
+                _renewSubscriptions()
+                _renewRegistrations()
+            end
+
+            -- Send local queue if there is something out there
+            _send();
 
         elseif data[1] == WAMP_MSG_SPEC.ABORT then
+            -- WAMP SPEC: [ABORT, Details|dict, Reason|uri]
+            if type(options.onError) == 'function' then
+                options.onError(data[2] or data[3])
+            end
+
+            ws:close()
+            ws = nil
 
         elseif data[1] == WAMP_MSG_SPEC.CHALLENGE then
 
         elseif data[1] == WAMP_MSG_SPEC.GOODBYE then
+            -- WAMP SPEC: [GOODBYE, Details|dict, Reason|uri]
+
+            if not cache.isSayingGoodbye then
+                -- get goodbye, initiated by server
+                cache.isSayingGoodbye = true
+                _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.error.goodbye_and_out' })
+            end
+
+            cache.sessionId = nil
+            ws:close()
+            ws = nil
 
         elseif data[1] == WAMP_MSG_SPEC.HEARTBEAT then
 
         elseif data[1] == WAMP_MSG_SPEC.ERROR then
+            -- WAMP SPEC: [ERROR, REQUEST.Type|int, REQUEST.Request|id, Details|dict,
+            --             Error|uri, (Arguments|list, ArgumentsKw|dict)]
 
             if data[2] == WAMP_MSG_SPEC.SUBSCRIBE or
                 data[2] == WAMP_MSG_SPEC.UNSUBSCRIBE then
@@ -449,10 +516,13 @@ function _M.new(url, opts)
 
             end
         elseif data[1] == WAMP_MSG_SPEC.SUBSCRIBED then
+            -- WAMP SPEC: [SUBSCRIBED, SUBSCRIBE.Request|id, Subscription|id]
 
         elseif data[1] == WAMP_MSG_SPEC.UNSUBSCRIBED then
+            -- WAMP SPEC: [UNSUBSCRIBED, UNSUBSCRIBE.Request|id]
 
         elseif data[1] == WAMP_MSG_SPEC.PUBLISHED then
+            -- WAMP SPEC: [PUBLISHED, PUBLISH.Request|id, Publication|id]
 
         elseif data[1] == WAMP_MSG_SPEC.EVENT then
 
@@ -536,34 +606,6 @@ function _M.new(url, opts)
             ws = require('websocket.client').ev()
             ws:connect(cache.url, cache.protocols)
             _initWsCallbacks()
-        end
-    end
-
-    -------------------------------------------
-    -- Renew subscriptions after reconnection to WAMP server
-    -------------------------------------------
-    local function _renewSubscriptions()
-        local subs, st = subscriptions, subsTopics
-
-        subscriptions, subsTopics = {}, {}
-
-        for k, v in ipairs(st) do
-            for kk, vv in ipairs(subs[v].callbacks) do
-                loowy:subscribe(v, vv)
-            end
-        end
-    end
-
-    -------------------------------------------
-    -- Renew RPC registrations after reconnection to WAMP server
-    -------------------------------------------
-    local function _renewRegistrations()
-        local rpcs, rn = rpcRegs, rpcNames
-
-        rpcRegs, rpcNames = {}, {}
-
-        for k, v in ipairs(rn) do
-            loowy:register(v, { rpc = rpcs[v].callbacks[0] })
         end
     end
 
