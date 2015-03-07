@@ -645,16 +645,111 @@ function _M.new(url, opts)
             end
 
         elseif data[1] == WAMP_MSG_SPEC.RESULT then
+            -- WAMP SPEC: [RESULT, CALL.Request|id, Details|dict, YIELD.Arguments|list, YIELD.ArgumentsKw|dict]
+
+            if calls[data[2]] then
+
+                local payload = data[6] or data[5] or nil
+
+                calls[data[2]].onSuccess(payload)
+                if not (data[3].progress) then
+                    -- We've received final result (progressive or not)
+                    calls[data[2]] = nil
+                end
+
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_CALL_RESULT
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.REGISTER then
 
         elseif data[1] == WAMP_MSG_SPEC.REGISTERED then
+            -- WAMP SPEC: [REGISTERED, REGISTER.Request|id, Registration|id]
+
+            if requests[data[2]] then
+
+                rpcRegs[requests[data[2]].topic] = {
+                    id = data[3],
+                    callbacks = { requests[data[2]].callbacks.rpc }
+                }
+                rpcRegs[data[3]] = rpcRegs[requests[data[2]].topic]
+
+                table.insert(rpcNames, requests[data[2]].topic)
+
+                if type(requests[data[2]].callbacks.onSuccess) == 'function' then
+                    requests[data[2]].callbacks.onSuccess()
+                end
+
+                requests[data[2]] = nil
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_REG
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.UNREGISTER then
 
         elseif data[1] == WAMP_MSG_SPEC.UNREGISTERED then
+            -- WAMP SPEC: [UNREGISTERED, UNREGISTER.Request|id]
+
+            if requests[data[2]] then
+
+                local id = rpcRegs[requests[data[2]].topic].id
+                rpcRegs[requests[data[2]].topic] = nil
+                rpcRegs[id] = nil
+
+                local i = arrayIndexOf(rpcNames, requests[data[2]].topic)
+                if i > 0 then
+                   table.remove(rpcNames, i)
+                end
+
+                if type(requests[data[2]].callbacks.onSuccess) == 'function' then
+                    requests[data[2]].callbacks.onSuccess()
+                end
+
+                requests[data[2]] = nil
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_UNREG
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.INVOCATION then
+            -- WAMP SPEC: [INVOCATION, Request|id, REGISTERED.Registration|id,
+            --             Details|dict, CALL.Arguments|list, CALL.ArgumentsKw|dict]
+
+            if rpcRegs[data[3]] then
+
+                local payload = data[6] or data[5] or nil
+                local result
+
+                if pcall(function()
+                    result = rpcRegs[data[3]].callbacks[0](payload)
+                end) then
+
+                    local msg
+                    -- WAMP SPEC: [YIELD, INVOCATION.Request|id, Options|dict, (Arguments|list, ArgumentsKw|dict)]
+
+                    if result == nil then
+                        msg =  { WAMP_MSG_SPEC.YIELD, data[2], {} }
+                    elseif result[1] ~= nil then -- assume it's an array
+                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, result }
+                    elseif type(result) == 'table' then    -- it's a dict
+                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, {}, result }
+                    else    -- assume it's a single value
+                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, { result } }
+                    end
+
+                    _send(msg)
+
+                else
+                    _send({ WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION,
+                            data[1], {}, 'wamp.error.invocation_exception' })
+                end
+
+            else
+                -- WAMP SPEC: [ERROR, INVOCATION, INVOCATION.Request|id, Details|dict, Error|uri]
+                _send({ WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION,
+                            data[2], {}, 'wamp.error.no_such_procedure' });
+
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_INVOCATION
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.INTERRUPT then
 
