@@ -233,10 +233,13 @@ function _M.new(url, opts)
 
         math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, use posix
 
-        repeat
+        reqId = math.random(100000000000000)
+        while (requests[reqId] ~= nil) do
             -- regId = math.random(9007199254740992)    -- returns numbers in scientific format after encoding :(
             reqId = math.random(100000000000000)
-        until requests[reqId] ~= nil
+        end
+
+        return reqId
     end
 
     --------------------------------------------
@@ -257,7 +260,7 @@ function _M.new(url, opts)
     local function _validateURI(uri)
 
         -- TODO create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
-        if string.find(uri, "^.$") == nil or string.find(uri, "wamp") == 1 then
+        if string.find(uri, "^[0-9a-zA-Z_.]+$") == nil or string.find(uri, "wamp") == 1 then
             return false
         else
             return true
@@ -331,6 +334,9 @@ function _M.new(url, opts)
     -- msg - message to send
     --------------------------------------------
     local function _send(msg)
+        print 'Sending message to server'
+        print ('Payload: ' .. _encode(msg))
+
         if msg ~= nil then
             table.insert(wsQueue, _encode(msg))
         end
@@ -505,26 +511,138 @@ function _M.new(url, opts)
             if data[2] == WAMP_MSG_SPEC.SUBSCRIBE or
                 data[2] == WAMP_MSG_SPEC.UNSUBSCRIBE then
 
+                if requests[data[3]] then
+
+                    if type(requests[data[3]].callbacks.onError) == 'function' then
+                        requests[data[3]].callbacks.onError(data[5])
+                    end
+
+                    requests[data[3]] = nil
+                else
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_ERROR
+                end
+
             elseif data[2] == WAMP_MSG_SPEC.PUBLISH then
+
+                if requests[data[3]] then
+
+                    if type(requests[data[3]].callbacks.onError) == 'function' then
+                        requests[data[3]].callbacks.onError(data[5])
+                    end
+
+                    requests[data[3]] = nil
+                else
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_PUBLISH_ERROR
+                end
 
             elseif data[2] == WAMP_MSG_SPEC.REGISTER or
                 data[2] == WAMP_MSG_SPEC.UNREGISTER then
+
+                if requests[data[3]] then
+
+                    if type(requests[data[3]].callbacks.onError) == 'function' then
+                        requests[data[3]].callbacks.onError(data[5])
+                    end
+
+                    requests[data[3]] = nil
+                else
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_ERROR
+                end
 
             elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
 
             elseif data[2] == WAMP_MSG_SPEC.CALL then
 
+                if calls[data[3]] then
+
+                    if type(calls[data[3]].onError) == 'function' then
+                        -- WAMP SPEC: [ERROR, CALL, CALL.Request|id, Details|dict,
+                        --             Error|uri, Arguments|list, ArgumentsKw|dict]
+
+                        calls[data[3]].onError(data[7] or data[6] or data[5])
+                    end
+
+                    calls[data[3]] = nil
+
+                else
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_CALL_ERROR
+                end
+
             end
         elseif data[1] == WAMP_MSG_SPEC.SUBSCRIBED then
             -- WAMP SPEC: [SUBSCRIBED, SUBSCRIBE.Request|id, Subscription|id]
 
+            if requests[data[2]] then
+
+                subscriptions[requests[data[2]].topic] = {
+                    id = data[3],
+                    callbacks = { requests[data[2]].callbacks.onEvent }
+                }
+                subscriptions[data[3]] = subscriptions[requests[data[2]].topic]
+
+                table.insert(subsTopics, requests[data[2]].topic)
+
+                if type(requests[data[2]].callbacks.onSuccess) == 'function' then
+                    requests[data[2]].callbacks.onSuccess()
+                end
+
+                requests[data[2]] = nil
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_CONFIRM
+            end
+
         elseif data[1] == WAMP_MSG_SPEC.UNSUBSCRIBED then
             -- WAMP SPEC: [UNSUBSCRIBED, UNSUBSCRIBE.Request|id]
+
+            if requests[data[2]] then
+
+                local id = subscriptions[requests[data[2]].topic].id
+                subscriptions[requests[data[2]].topic] = nil
+                subscriptions[id] = nil
+
+                local i = arrayIndexOf(subsTopics, requests[data[2]].topic)
+                if i > 0 then
+                   table.remove(subsTopics, i)
+                end
+
+                if type(requests[data[2]].callbacks.onSuccess) == 'function' then
+                    requests[data[2]].callbacks.onSuccess()
+                end
+
+                requests[data[2]] = nil
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_UNSUBSCRIBED
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.PUBLISHED then
             -- WAMP SPEC: [PUBLISHED, PUBLISH.Request|id, Publication|id]
 
+            if requests[data[2]] then
+
+                if type(requests[data[2]].callbacks.onSuccess) == 'function' then
+                    requests[data[2]].callbacks.onSuccess()
+                end
+
+                requests[data[2]] = nil
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_PUBLISH_PUBLISHED
+            end
+
         elseif data[1] == WAMP_MSG_SPEC.EVENT then
+            -- WAMP SPEC: [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id,
+            --             Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
+
+            if subscriptions[data[2]] then
+
+                local payload = data[6] or data[5] or nil
+
+                for k, callback in ipairs(subscriptions[data[2]].callbacks) do
+                    callback(payload)
+                end
+
+            else
+                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_EVENT
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.RESULT then
 
@@ -757,6 +875,7 @@ function _M.new(url, opts)
             _send({ WAMP_MSG_SPEC.SUBSCRIBE, reqId, {}, topicURI })
 
         else    -- already have subscription to this topic
+
             -- There is no such callback yet
             if arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent) < 0 then
                 table.insert(subscriptions[topicURI].callbacks, callbacks.onEvent)
@@ -927,18 +1046,22 @@ function _M.new(url, opts)
 
         reqId = _getReqId()
 
-        if payload == nil and callbacks == nil and advancedOptions == nil then
-            -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri]
+        if callbacks ~= nil then
+            requests[reqId] = {
+                topic = topicURI,
+                callbacks = callbacks
+            }
+        end
+
+        -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri(, Arguments|list (, ArgumentsKw|dict))]
+        if payload == nil then
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
-        elseif callbacks == nil and advancedOptions == nil then
-            -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list (, ArgumentsKw|dict)]
-            if payload[1] ~= nil then -- assume it's an array
-                msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
-            elseif type(payload) == 'table' then    -- it's a dict
-                msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, {}, payload }
-            else    -- assume it's a single value
-                msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
-            end
+        elseif payload[1] ~= nil then -- assume it's an array
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
+        elseif type(payload) == 'table' then    -- it's a dict
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, {}, payload }
+        else    -- assume it's a single value
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
         end
 
         _send(msg)
