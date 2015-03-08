@@ -334,15 +334,14 @@ function _M.new(url, opts)
     -- msg - message to send
     --------------------------------------------
     local function _send(msg)
-        print 'Sending message to server'
-        print ('Payload: ' .. _encode(msg))
-
         if msg ~= nil then
             table.insert(wsQueue, _encode(msg))
         end
 
         if ws ~= nil and ws.state == 'OPEN' and cache.sessionId ~= nil then
             while #wsQueue > 0 do
+                print 'Sending message to server'
+                print ('Payload: ' .. wsQueue[1])
                 ws:send(table.remove(wsQueue, 1))
             end
         end
@@ -728,7 +727,7 @@ function _M.new(url, opts)
 
                     if result == nil then
                         msg =  { WAMP_MSG_SPEC.YIELD, data[2], {} }
-                    elseif result[1] ~= nil then -- assume it's an array
+                    elseif type(result) == 'table' and result[1] ~= nil then -- assume it's an array
                         msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, result }
                     elseif type(result) == 'table' then    -- it's a dict
                         msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, {}, result }
@@ -990,13 +989,15 @@ function _M.new(url, opts)
     -- Unsubscribe from topic
     --
     -- topicURI - topic to unsubscribe
-    -- callbacks - if it is a function - it will be treated as unsubscribe event callback
-    --                           or it can be hash table of callbacks:
+    -- callbacks - if it is a function - it will be treated as
+    --                          published event callback to remove or it can be hash table of callbacks:
     --                           { onSuccess: will be called when unsubscribe would be confirmed
-    --                             onError: will be called if unsubscribe would be aborted }
+    --                             onError: will be called if unsubscribe would be aborted
+    --                             onEvent: published event callback to remove (and allow others }
     ---------------------------------------------------------------------------------------------
     function loowy:unsubscribe(topicURI, callbacks)
-        local reqId, i
+        local reqId
+        local i = -1
 
         if cache.sessionId and not cache.serverWampFeatures.roles.broker then
             cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
@@ -1017,9 +1018,11 @@ function _M.new(url, opts)
                 callbacks = {}
             elseif type(callbacks) == 'function' then
                 i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks)
-                callbacks = { onEvent = callbacks }
-            else
+                callbacks = {}
+            elseif type(callbacks.onEvent) == 'function' then
                 i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent)
+            else
+                subscriptions[topicURI].callbacks = {}
             end
 
             if i > 0 then
@@ -1118,11 +1121,11 @@ function _M.new(url, opts)
                 end
             end
 
-            if advancedOptions.exclude_me then
+            if type(advancedOptions.exclude_me) == 'boolean' then
                 options.exclude_me = advancedOptions.exclude_me ~= false
             end
 
-            if advancedOptions.disclose_me then
+            if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
             end
 
@@ -1151,7 +1154,7 @@ function _M.new(url, opts)
         -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri(, Arguments|list (, ArgumentsKw|dict))]
         if payload == nil then
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
-        elseif payload[1] ~= nil then -- assume it's an array
+        elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, {}, payload }
@@ -1243,11 +1246,11 @@ function _M.new(url, opts)
                 end
             end
 
-            if advancedOptions.exclude_me then
+            if type(advancedOptions.exclude_me) == 'boolean' then
                 options.exclude_me = advancedOptions.exclude_me ~= false
             end
 
-            if advancedOptions.disclose_me then
+            if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
             end
 
@@ -1274,7 +1277,7 @@ function _M.new(url, opts)
 
         if payload == nil  then
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI }
-        elseif payload[1] ~= nil then -- assume it's an array
+        elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {}, payload }
