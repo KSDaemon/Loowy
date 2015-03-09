@@ -648,7 +648,7 @@ function _M.new(url, opts)
 
             if calls[data[2]] then
 
-                local payload = data[6] or data[5] or nil
+                local payload = data[5] or data[4] or nil
 
                 calls[data[2]].onSuccess(payload)
                 if not (data[3].progress) then
@@ -718,9 +718,9 @@ function _M.new(url, opts)
                 local payload = data[6] or data[5] or nil
                 local result
 
-                if pcall(function()
-                    result = rpcRegs[data[3]].callbacks[0](payload)
-                end) then
+                local status, result = pcall(rpcRegs[data[3]].callbacks[1], payload)
+
+                if status then
 
                     local msg
                     -- WAMP SPEC: [YIELD, INVOCATION.Request|id, Options|dict, (Arguments|list, ArgumentsKw|dict)]
@@ -739,7 +739,7 @@ function _M.new(url, opts)
 
                 else
                     _send({ WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION,
-                            data[1], {}, 'wamp.error.invocation_exception' })
+                            data[2], {}, 'wamp.error.invocation_exception' })
                 end
 
             else
@@ -1267,9 +1267,10 @@ function _M.new(url, opts)
 
         end
 
-        repeat
+        reqId = _getReqId()
+        while calls[reqId] ~= nil do
             reqId = _getReqId()
-        until calls[reqId] ~= nil
+        end
 
         calls[reqId] = callbacks
 

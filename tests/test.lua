@@ -145,6 +145,88 @@ client1 = loowy.new('ws://hga-dev.kostik/ws/', { transportEncoding = 'json',
         end, 10)
         unsubscribeTimer:start(ev.Loop.default)
 
+        print ('Registering new RPC rpc.test1')
+        client1:register('rpc.test1', {
+            rpc = function (data)
+                print ('Invoked rpc.test1')
+                print ('RPC payload')
+                var_dump(data)
+                return data
+            end,
+            onSuccess = function()
+                print 'Got to register rpc rpc.test1 onSuccess'
+
+                print 'Calling rpc rpc.test1 without data'
+                client1:call('rpc.test1', nil, {
+                    onSuccess = function(data)
+                        print 'Got to rpc call rpc.test1 onSuccess'
+                        print 'Call result'
+                        var_dump(data)
+                    end,
+                    onError = function()
+                        print 'Got to rpc call rpc.test1 onError'
+                    end
+
+                }, { disclose_me = true, exclude_me = false })
+
+                print 'Calling rpc rpc.test1 with payload: string "string payload"'
+                client1:call('rpc.test1', "string payload", {
+                    onSuccess = function(data)
+                        print 'Got to rpc call rpc.test1 onSuccess'
+                        print 'Call result'
+                        var_dump(data)
+                    end,
+                    onError = function()
+                        print 'Got to rpc call rpc.test1 onError'
+                    end
+
+                }, { disclose_me = true, exclude_me = false })
+
+                print 'Calling rpc rpc.test1 with payload: integer 25'
+                client1:call('rpc.test1', 25, {
+                    onSuccess = function(data)
+                        print 'Got to rpc call rpc.test1 onSuccess'
+                        print 'Call result'
+                        var_dump(data)
+                    end,
+                    onError = function()
+                        print 'Got to rpc call rpc.test1 onError'
+                    end
+
+                }, { disclose_me = true, exclude_me = false })
+
+                print 'Calling rpc rpc.test1 with payload: array { 1, 2, 3, 4, 5 }'
+                client1:call('rpc.test1', { 1, 2, 3, 4, 5 }, {
+                    onSuccess = function(data)
+                        print 'Got to rpc call rpc.test1 onSuccess'
+                        print 'Call result'
+                        var_dump(data)
+                    end,
+                    onError = function()
+                        print 'Got to rpc call rpc.test1 onError'
+                    end
+
+                }, { disclose_me = true, exclude_me = false })
+
+                print 'Calling rpc rpc.test1 with payload: table { key1 = "string", key2 = 100, key3 = true }'
+                client1:call('rpc.test1', { key1 = "string", key2 = 100, key3 = true }, {
+                    onSuccess = function(data)
+                        print 'Got to rpc call rpc.test1 onSuccess'
+                        print 'Call result'
+                        var_dump(data)
+                    end,
+                    onError = function()
+                        print 'Got to rpc call rpc.test1 onError'
+                    end
+
+                }, { disclose_me = true, exclude_me = false })
+
+            end,
+            onError = function()
+                print 'Got to register rpc rpc.test1 onError'
+            end
+        })
+
         local disconnectTimer
         disconnectTimer = ev.Timer.new(function()
             disconnectTimer:stop(ev.Loop.default)
@@ -152,6 +234,7 @@ client1 = loowy.new('ws://hga-dev.kostik/ws/', { transportEncoding = 'json',
             client1:disconnect()
         end, 30)
         disconnectTimer:start(ev.Loop.default)
+
     end,
     onClose = function()
         print 'Got to WAMP Client instance onClose callback'
