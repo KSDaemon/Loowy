@@ -378,7 +378,7 @@ function _M.new(url, opts)
     -------------------------------------------
     -- Connection open callback
     -------------------------------------------
-    local function _wsOnOpen()
+    local function _wsOnOpen(wsProtocol, headers)
         print('websocket OnOpen event fired')
 
         if cache.timer ~= nil then
@@ -387,8 +387,7 @@ function _M.new(url, opts)
             cache.timer = nil
         end
 
-        -- TODO Get transport from ws response headers (not implemented in lua-websocket right now)
-        options.transportEncoding = 'json'
+        options.transportEncoding = string.match(wsProtocol,'.*%.([^.]+)$')
 
         ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }))
     end
@@ -775,8 +774,8 @@ function _M.new(url, opts)
     -- Initialize internal callbacks
     -------------------------------------------
     local function _initWsCallbacks()
-        ws:on_open(function(ws)
-            _wsOnOpen()
+        ws:on_open(function(wsObj, wsProtocol, headers)
+            _wsOnOpen(wsProtocol, headers)
         end)
         ws:on_close(function(ws, was_clean,code,reason)
             _wsOnClose()
@@ -1420,7 +1419,6 @@ function _M.new(url, opts)
     ------------------------------------
     -- End of Loowy instance public API
     ------------------------------------
-
 
     if url ~= nil then
         cache.url = url
