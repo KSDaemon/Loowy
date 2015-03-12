@@ -29,6 +29,7 @@ local ev = require 'ev'
 local loowy = require 'loowy.client'
 
 local client1
+local firstDisconnect = true
 
 print('Connecting client to WAMP Server: ' ..  wsServer)
 
@@ -238,6 +239,10 @@ client1 = loowy.new('ws://hga-dev.kostik/ws/', { transportEncoding = 'json',
     end,
     onClose = function()
         print 'Got to WAMP Client instance onClose callback'
+        if firstDisconnect then
+            client1.connect()
+            firstDisconnect = false
+        end
     end,
     onError = function()
         print 'Got to WAMP Client instance onError callback'

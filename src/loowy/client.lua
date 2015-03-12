@@ -359,19 +359,17 @@ function _M.new(url, opts)
         rpcRegs = {}
         rpcNames = {}
 
-        cache = {
-            sessionId = nil,
-            serverWampFeatures = {
-                roles = {}
-            },
-            isSayingGoodbye = false,
-            opStatus = {
-                code = 0,
-                description = 'Success!'
-            },
-            timer = nil,
-            reconnectingAttempts = 0
+        cache.sessionId = nil
+        cache.serverWampFeatures = {
+            roles = {}
         }
+        cache.isSayingGoodbye = false
+        cache.opStatus = {
+            code = 0,
+            description = 'Success!'
+        }
+        cache.timer = nil
+        cache.reconnectingAttempts = 0
 
     end
 
@@ -406,12 +404,12 @@ function _M.new(url, opts)
             cache.timer = ev.Timer.new(_wsReconnect, options.reconnectInterval, options.reconnectInterval)
             cache.timer:start(ev.Loop.default)
         else
+            _resetState()
+            ws = nil
+
             if type(options.onClose) == 'function' then
                 options.onClose()
             end
-
-            _resetState()
-            ws = nil
         end
     end
 
@@ -814,9 +812,7 @@ function _M.new(url, opts)
 
             cache.reconnectingAttempts = cache.reconnectingAttempts + 1
 
-            ws = require('websocket.client').ev()
-            ws:connect(cache.url, cache.protocols)
-            _initWsCallbacks()
+            loowy:connect()
         end
     end
 
@@ -842,6 +838,7 @@ function _M.new(url, opts)
             for k, v in pairs(opts) do
                 options[k] = v
             end
+            _setWsProtocols()
         end
     end
 
@@ -874,9 +871,8 @@ function _M.new(url, opts)
             cache.url = url
         end
 
-        _setWsProtocols()
         ws = require('websocket.client').ev()
-        ws:connect(url, cache.protocols)
+        ws:connect(cache.url, cache.protocols)
         _initWsCallbacks()
     end
 
@@ -1420,23 +1416,15 @@ function _M.new(url, opts)
     -- End of Loowy instance public API
     ------------------------------------
 
-    if url ~= nil then
-        cache.url = url
-    end
-
     if opts ~= nil then
         -- Merging user options
         for k, v in pairs(opts) do
             options[k] = v
         end
+        _setWsProtocols()
     end
 
-    -- getting instance of ws client
-    ws = require('websocket.client').ev()
-
-    _setWsProtocols()
-    ws:connect(url, cache.protocols)
-    _initWsCallbacks()
+    loowy:connect(url)
 
     return loowy
 end
