@@ -301,8 +301,8 @@ function _M.new(url, opts)
             local mp = require 'MessagePack'
             dataObj = mp.pack(msg)
         else        -- json
-            local cjson = require "cjson"
-            dataObj = cjson.encode(msg)
+            local json = require "json"
+            dataObj = json.encode(msg)
         end
 
         return dataObj
@@ -727,7 +727,7 @@ function _M.new(url, opts)
                     elseif type(result) == 'table' and result[1] ~= nil then -- assume it's an array
                         msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, result }
                     elseif type(result) == 'table' then    -- it's a dict
-                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, {}, result }
+                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, setmetatable({}, { __is_luajson_array = true }), result }
                     else    -- assume it's a single value
                         msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, { result } }
                     end
@@ -1152,7 +1152,7 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, {}, payload }
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __is_luajson_array = true }), payload }
         else    -- assume it's a single value
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
         end
@@ -1276,7 +1276,7 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, {}, payload }
+            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __is_luajson_array = true }), payload }
         else -- assume it's a single value
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
         end

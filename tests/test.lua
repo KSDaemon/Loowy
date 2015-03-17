@@ -10,7 +10,7 @@ local config = {}
 local wsServer
 
 for line in io.lines('config.ini') do
-    local key, value = line:match("^(%w+)%s-=%s-(.+)$")
+    local key, value = line:match("^(%w+)%s*=%s*(.+)$")
     if key and value then
         if tonumber(value) then value = tonumber(value) end
         if value == "true" then value = true end
@@ -33,9 +33,9 @@ local firstDisconnect = true
 
 print('Connecting client to WAMP Server: ' ..  wsServer)
 
-client1 = loowy.new('ws://hga-dev.kostik/ws/', { transportEncoding = 'json',
-    realm = 'test',
-    maxRetries = 5,
+client1 = loowy.new(wsServer, { transportEncoding = 'json',
+    realm = config.realm,
+    maxRetries = config.maxRetries,
     onConnect = function()
         print 'Got to WAMP Client instance onConnect callback'
 
