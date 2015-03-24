@@ -321,7 +321,7 @@ function _M.new(url, opts)
             local mp = require 'MessagePack'
             dataObj = mp.unpack(msg)
         else        -- json
-            local cjson = require "cjson"
+            local cjson = require "json"
             dataObj = cjson.decode(msg)
         end
 
