@@ -10,7 +10,7 @@
 -- Date: 20.11.14
 --
 
-require "debug.var_dump"
+--require "debug.var_dump"
 
 local _M = {
     _VERSION = '0.1.0'
