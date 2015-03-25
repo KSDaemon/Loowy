@@ -3,7 +3,7 @@ version = "0.1.1-1"
 
 source = {
     url = "git://github.com/KSDaemon/Loowy.git",
-    tag = "0.1.1"
+    tag = "v0.1.1"
 }
 
 description = {
