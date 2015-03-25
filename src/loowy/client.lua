@@ -13,13 +13,13 @@
 --require "debug.var_dump"
 
 local _M = {
-    _VERSION = '0.1.0'
+    _VERSION = '0.1.1'
 }
 
 -- _M.__index = _M -- I think don't needed
 
 local WAMP_FEATURES = {
-    agent = "Loowy/Lua v0.1.0",
+    agent = "Loowy/Lua v0.1.1",
     roles = {
         broker = {
             features = {

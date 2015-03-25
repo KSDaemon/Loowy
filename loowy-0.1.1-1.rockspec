@@ -1,9 +1,9 @@
 package = "Loowy"
-version = "0.1.0-1"
+version = "0.1.1-1"
 
 source = {
     url = "git://github.com/KSDaemon/Loowy.git",
-    tag = "0.1.0"
+    tag = "0.1.1"
 }
 
 description = {
