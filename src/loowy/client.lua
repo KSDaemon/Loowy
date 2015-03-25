@@ -1053,7 +1053,7 @@ function _M.new(url, opts)
     -- Publish a event to topic
     --
     -- topicURI - topic to publish
-    -- payload - optional parameter.
+    -- payload - optional parameter, can be any value
     -- callbacks - optional table of callbacks:
     --                           { onSuccess: will be called when publishing would be confirmed
     --                             onError: will be called if publishing would be aborted }

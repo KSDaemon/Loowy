@@ -20,7 +20,8 @@ dependencies = {
     "lua-websockets",
     "lua-ev",
     "luajson",
-    "lua-messagepack"
+    "lua-messagepack",
+    "busted"
 }
 
 build = {
