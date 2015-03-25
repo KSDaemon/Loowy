@@ -8,7 +8,7 @@ source = {
 
 description = {
     summary = "LUA WAMP client",
-    detailed = "Async WAMP client based on lua-websockets, luasocket and lib_ev",
+    detailed = "Async WAMP client based on lua-websockets, luasocket and lib-ev",
     homepage = "https://github.com/KSDaemon/Loowy",
     license = "MIT/X11",
     maintainer = "Konstantin Burkalev <KSDaemon@ya.ru>"

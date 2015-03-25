@@ -1178,7 +1178,9 @@ function _M.new(url, opts)
     --                               Callees that are (potentially) forwarded the call issued
     --                     exclude_me: bool flag of potentially forwarding call to caller if he is registered as callee
     --                     disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
-    --                                  to endpoints of a routed call }
+    --                                  to endpoints of a routed call
+    --                     receive_progress: bool flag for receiving progressive results. In this case
+    --                                  onSuccess function will be called every time on receiving result }
     --------------------------------------------------------------------------------------------------------------------
     function loowy:call(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
@@ -1247,6 +1249,10 @@ function _M.new(url, opts)
 
             if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
+            end
+
+            if type(advancedOptions.receive_progress) == 'boolean' then
+                options.receive_progress = advancedOptions.receive_progress == true
             end
 
             if err then
