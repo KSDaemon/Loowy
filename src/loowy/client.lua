@@ -16,10 +16,14 @@ local _M = {
     _VERSION = '0.1.2'
 }
 
--- _M.__index = _M -- I think don't needed
+-- _M.__index = _M -- I think no needed
+
+setmetatable(_M, { __call = function (cls, ...)
+    return cls.new(...)
+end })
 
 local WAMP_FEATURES = {
-    agent = "Loowy/Lua v0.1.2",
+    agent = "Loowy/Lua v" .. _M._VERSION,
     roles = {
         publisher = {
             features = {
@@ -31,9 +35,10 @@ local WAMP_FEATURES = {
         subscriber = {},
         caller = {
             features = {
-                callee_blackwhite_listing = true,
-                caller_exclusion = true,
-                caller_identification = true
+                caller_identification = true,
+                progressive_call_results = true,
+                call_canceling = true,
+                call_timeout = true
             }
         },
         callee = {
@@ -51,7 +56,6 @@ local WAMP_MSG_SPEC = {
     CHALLENGE = 4,
     AUTHENTICATE = 5,
     GOODBYE = 6,
-    HEARTBEAT = 7,
     ERROR = 8,
     PUBLISH = 16,
     PUBLISHED = 17,
@@ -93,7 +97,11 @@ local WAMP_ERROR_MSG = {
     NON_EXIST_RPC_UNREG = { code = 17, description = "Received rpc unregistration confirmation for non existent rpc!" },
     NON_EXIST_RPC_ERROR = { code = 18, description = "Received error for non existent rpc!" },
     NON_EXIST_RPC_INVOCATION = { code = 19, description = "Received invocation for non existent rpc!" },
-    NON_EXIST_RPC_REQ_ID = { code = 20, description = "No RPC calls in action with specified request ID!" }
+    NON_EXIST_RPC_REQ_ID = { code = 20, description = "No RPC calls in action with specified request ID!" },
+    NO_REALM = { code = 21, description = "No realm specified!" },
+    NO_WS_OR_URL = { code = 22, description = "No websocket provided or URL specified is incorrect!" },
+    NO_CRA_CB_OR_ID = { code = 23, description = "No onChallenge callback or authid was provided for authentication!" },
+    CRA_EXCEPTION = { code = 24, description = "Exception raised during CRA challenge processing" }
 }
 
 -- Loowy client class
@@ -139,7 +147,8 @@ function _M.new(url, opts)
         -- Status of last operation
         opStatus = {
             code = 0,
-            description = 'Success!'
+            description = 'Success!',
+            reqId = 0
         },
 
         -- Timer for reconnection
@@ -204,6 +213,22 @@ function _M.new(url, opts)
         -- @type string
         realm = nil,
 
+        -- Custom attributes to send to router on hello
+        -- @type object
+        helloCustomDetails = nil,
+
+         -- Authentication id to use in challenge
+         -- @type string
+        authid = nil,
+
+         -- Supported authentication methods
+         -- @type array
+        authmethods = {},
+
+         -- onChallenge callback
+         -- @type function
+        onChallenge = nil,
+
         -- onConnect callback
         -- @type function
         onConnect = nil,
@@ -218,7 +243,12 @@ function _M.new(url, opts)
 
         -- onReconnect callback
         -- @type function
-        onReconnect = nil
+        onReconnect = nil,
+
+        -- onReconnectSuccess callback
+        -- @type function
+        onReconnectSuccess = nil
+
     }
 
     --------------------------------
@@ -237,7 +267,7 @@ function _M.new(url, opts)
     local function _getReqId()
         local reqId
 
-        math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, use posix
+        math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, need to use posix
 
         reqId = math.random(100000000000000)
         while (requests[reqId] ~= nil) do
@@ -292,6 +322,27 @@ function _M.new(url, opts)
         else
             error("table.indexOf expects table for first argument, " .. type(t) .. " given")
         end
+    end
+
+    --------------------------------------------
+    -- Merge two tables
+    --
+    -- dest - Destination table
+    -- source - Source table
+    -- @return merged table
+    --------------------------------------------
+    local function tblMerge(dest, source)
+        for k, v in pairs(source) do
+            if (type(v) == "table" and type(dest[k]) == "table") then
+                -- don't overwrite one table with another
+                -- instead merge them recurisvely
+                tblMerge(dest[k], v)
+            else
+                dest[k] = v
+            end
+        end
+
+        return dest
     end
 
     --------------------------------------------
@@ -365,6 +416,7 @@ function _M.new(url, opts)
         rpcRegs = {}
         rpcNames = {}
 
+        cache.protocols = { 'wamp.2.json' }
         cache.sessionId = nil
         cache.serverWampFeatures = {
             roles = {}
@@ -372,7 +424,8 @@ function _M.new(url, opts)
         cache.isSayingGoodbye = false
         cache.opStatus = {
             code = 0,
-            description = 'Success!'
+            description = 'Success!',
+            reqId = 0
         }
         cache.timer = nil
         cache.reconnectingAttempts = 0
