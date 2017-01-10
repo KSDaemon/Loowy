@@ -391,15 +391,25 @@ function _M.new(url, opts)
     -- msg - message to send
     --------------------------------------------
     local function _send(msg)
+        local msgtype
+
         if msg ~= nil then
             table.insert(wsQueue, _encode(msg))
         end
+
+        if options.transportEncoding == 'msgpack' then
+            msgtype = 2 -- websocket.BINARY
+        else
+            msgtype = 1 -- websocket.TEXT
+        end
+
+        print('msgtype:'..msgtype)
 
         if ws ~= nil and ws.state == 'OPEN' and cache.sessionId ~= nil then
             while #wsQueue > 0 do
                 print 'Sending message to server'
                 print ('Payload: ' .. wsQueue[1])
-                ws:send(table.remove(wsQueue, 1))
+                ws:send(table.remove(wsQueue, 1), msgtype)
             end
         end
     end
@@ -436,6 +446,7 @@ function _M.new(url, opts)
     -- Connection open callback
     -------------------------------------------
     local function _wsOnOpen(wsProtocol, headers)
+        local msgtype
         print('websocket OnOpen event fired')
 
         if cache.timer ~= nil then
@@ -446,7 +457,13 @@ function _M.new(url, opts)
 
         options.transportEncoding = string.match(wsProtocol,'.*%.([^.]+)$')
 
-        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }))
+        if options.transportEncoding == 'msgpack' then
+            msgtype = 2 -- websocket.BINARY
+        else
+            msgtype = 1 -- websocket.TEXT
+        end
+
+        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }), msgtype)
     end
 
     -------------------------------------------
