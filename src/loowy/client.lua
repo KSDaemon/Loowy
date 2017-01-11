@@ -209,6 +209,10 @@ function _M.new(url, opts)
         -- @type string
         transportEncoding = 'json',
 
+        -- Transport message type
+        -- @type string
+        transportType = nil,
+
         -- WAMP Realm to join
         -- @type string
         realm = nil,
@@ -399,7 +403,7 @@ function _M.new(url, opts)
             while #wsQueue > 0 do
                 print 'Sending message to server'
                 print ('Payload: ' .. wsQueue[1])
-                ws:send(table.remove(wsQueue, 1))
+                ws:send(table.remove(wsQueue, 1), options.transportType)
             end
         end
     end
@@ -446,7 +450,14 @@ function _M.new(url, opts)
 
         options.transportEncoding = string.match(wsProtocol,'.*%.([^.]+)$')
 
-        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }))
+        local ws_meta = require('websocket')
+        if options.transportEncoding == 'json' then
+            options.transportType = ws_meta.TEXT
+        else --if options.transportEncoding == 'msgpack' then
+            options.transportType = ws_meta.BINARY
+        end
+
+        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }), options.transportType)
     end
 
     -------------------------------------------
