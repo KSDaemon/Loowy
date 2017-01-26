@@ -193,6 +193,10 @@ function _M.new(url, opts)
     -- Options hash-table
     -- @type object
     local options = {
+        -- Logging
+        -- @type boolean
+        debug = false,
+
         -- Reconnecting flag
         -- @type boolean
         autoReconnect = true,
@@ -266,6 +270,20 @@ function _M.new(url, opts)
     local _wsReconnect
 
     ---------------------------------
+    -- Internal logging
+    ---------------------------------
+    local function _log(...)
+        if options.debug == true then
+            local printResult = ''
+            for i, v in ipairs(arg) do
+                printResult = printResult .. tostring(v) .. "\t"
+            end
+            printResult = printResult .. "\n"
+            print(printResult)
+        end
+    end
+
+    ---------------------------------
     -- Get the new unique request id
     ---------------------------------
     local function _getReqId()
@@ -314,7 +332,7 @@ function _M.new(url, opts)
     -- obj - object to search
     -- @return index of obj or -1 if not found
     --------------------------------------------
-    local function arrayIndexOf(t, obj)
+    local function _arrayIndexOf(t, obj)
         if type(t) == 'table' then
             for i = 1, #t do
                 if t[i] == obj then
@@ -335,12 +353,12 @@ function _M.new(url, opts)
     -- source - Source table
     -- @return merged table
     --------------------------------------------
-    local function tblMerge(dest, source)
+    local function _tblMerge(dest, source)
         for k, v in pairs(source) do
             if (type(v) == "table" and type(dest[k]) == "table") then
                 -- don't overwrite one table with another
                 -- instead merge them recurisvely
-                tblMerge(dest[k], v)
+                _tblMerge(dest[k], v)
             else
                 dest[k] = v
             end
@@ -666,7 +684,7 @@ function _M.new(url, opts)
                 subscriptions[requests[data[2]].topic] = nil
                 subscriptions[id] = nil
 
-                local i = arrayIndexOf(subsTopics, requests[data[2]].topic)
+                local i = _arrayIndexOf(subsTopics, requests[data[2]].topic)
                 if i > 0 then
                    table.remove(subsTopics, i)
                 end
@@ -762,7 +780,7 @@ function _M.new(url, opts)
                 rpcRegs[requests[data[2]].topic] = nil
                 rpcRegs[id] = nil
 
-                local i = arrayIndexOf(rpcNames, requests[data[2]].topic)
+                local i = _arrayIndexOf(rpcNames, requests[data[2]].topic)
                 if i > 0 then
                    table.remove(rpcNames, i)
                 end
@@ -1036,7 +1054,7 @@ function _M.new(url, opts)
         else    -- already have subscription to this topic
 
             -- There is no such callback yet
-            if arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent) < 0 then
+            if _arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent) < 0 then
                 table.insert(subscriptions[topicURI].callbacks, callbacks.onEvent)
             end
 
@@ -1082,10 +1100,10 @@ function _M.new(url, opts)
                 subscriptions[topicURI].callbacks = {}
                 callbacks = {}
             elseif type(callbacks) == 'function' then
-                i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks)
+                i = _arrayIndexOf(subscriptions[topicURI].callbacks, callbacks)
                 callbacks = {}
             elseif type(callbacks.onEvent) == 'function' then
-                i = arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent)
+                i = _arrayIndexOf(subscriptions[topicURI].callbacks, callbacks.onEvent)
             else
                 subscriptions[topicURI].callbacks = {}
             end
