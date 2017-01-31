@@ -105,19 +105,19 @@ local WAMP_ERROR_MSG = {
 --local Loowy = {}
 --Loowy.__index = Loowy -- failed table lookups on the instances should fallback to the class table, to get methods
 
-----------------------------------------------
+---------------------------------------------------
 -- Create a new Loowy instance
 --
 -- url - WAMP router url (optional)
 -- opts - Configuration options (optional)
-----------------------------------------------
+---------------------------------------------------
 function _M.new(url, opts)
     -- local loowy = setmetatable({}, Loowy)
     local loowy = {}
 
-    -------------------------
+    ---------------------------------------------------
     -- Instance private data
-    -------------------------
+    ---------------------------------------------------
 
     local cache = {
         -- WS url
@@ -256,19 +256,19 @@ function _M.new(url, opts)
 
     }
 
-    --------------------------------
+    ---------------------------------------------------
     -- End of Instance private data
-    --------------------------------
+    ---------------------------------------------------
 
-    ----------------------------
+    ---------------------------------------------------
     -- Instance private methods
-    ----------------------------
+    ---------------------------------------------------
 
     local _wsReconnect
 
-    ---------------------------------
+    ---------------------------------------------------
     -- Internal logging
-    ---------------------------------
+    ---------------------------------------------------
     local function _log(...)
         if options.debug == true then
             local printResult = ''
@@ -280,9 +280,9 @@ function _M.new(url, opts)
         end
     end
 
-    ---------------------------------
+    ---------------------------------------------------
     -- Get the new unique request id
-    ---------------------------------
+    ---------------------------------------------------
     local function _getReqId()
         local reqId
 
@@ -297,21 +297,21 @@ function _M.new(url, opts)
         return reqId
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Set websocket protocols based on options
-    --------------------------------------------
+    ---------------------------------------------------
     local function _setWsProtocols()
         if options.transportEncoding == 'msgpack' then
             table.insert(cache.protocols, 1, 'wamp.2.msgpack')
         end
     end
 
-    -------------------------
+    ---------------------------------------------------
     -- Validate uri
     --
     -- uri - uri to validate
     -- @return boolean
-    -------------------------
+    ---------------------------------------------------
     local function _validateURI(uri)
 
         -- TODO create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
@@ -322,13 +322,13 @@ function _M.new(url, opts)
         end
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Return index of obj in array t
     --
     -- t - array table
     -- obj - object to search
     -- @return index of obj or -1 if not found
-    --------------------------------------------
+    ---------------------------------------------------
     local function _arrayIndexOf(t, obj)
         if type(t) == 'table' then
             for i = 1, #t do
@@ -343,13 +343,13 @@ function _M.new(url, opts)
         end
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Merge two tables
     --
     -- dest - Destination table
     -- source - Source table
     -- @return merged table
-    --------------------------------------------
+    ---------------------------------------------------
     local function _tableMerge(dest, source)
         for k, v in pairs(source) do
             if (type(v) == "table" and type(dest[k]) == "table") then
@@ -364,12 +364,12 @@ function _M.new(url, opts)
         return dest
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Encode WAMP message
     --
     -- msg - message to encode
     -- @return encoder specific encoded message
-    --------------------------------------------
+    ---------------------------------------------------
     local function _encode(msg)
         local dataObj
 
@@ -384,12 +384,12 @@ function _M.new(url, opts)
         return dataObj
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Decode WAMP message
     --
     -- msg - message to decode
     -- @return encoder specific decoded message
-    --------------------------------------------
+    ---------------------------------------------------
     local function _decode(msg)
         local dataObj
 
@@ -404,11 +404,11 @@ function _M.new(url, opts)
         return dataObj
     end
 
-    --------------------------------------------
+    ---------------------------------------------------
     -- Send encoded message to server
     --
     -- msg - message to send
-    --------------------------------------------
+    ---------------------------------------------------
     local function _send(msg)
         if msg ~= nil then
             table.insert(wsQueue, _encode(msg))
@@ -422,9 +422,9 @@ function _M.new(url, opts)
         end
     end
 
-    ----------------------------------
+    ---------------------------------------------------
     -- Reset internal state and cache
-    ----------------------------------
+    ---------------------------------------------------
     local function _resetState()
         wsQueue = {}
         requests = {}
@@ -450,9 +450,9 @@ function _M.new(url, opts)
 
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Connection open callback
-    -------------------------------------------
+    ---------------------------------------------------
     local function _wsOnOpen(wsProtocol, headers)
         _log('websocket OnOpen event fired')
 
@@ -476,9 +476,9 @@ function _M.new(url, opts)
         ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, runtimeOptions }), options.transportType)
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Connection close callback
-    -------------------------------------------
+    ---------------------------------------------------
     local function _wsOnClose()
         _log('websocket OnClose event fired')
 
@@ -498,9 +498,9 @@ function _M.new(url, opts)
         end
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Renew subscriptions after reconnection to WAMP server
-    -------------------------------------------
+    ---------------------------------------------------
     local function _renewSubscriptions()
         local subs, st = subscriptions, subsTopics
 
@@ -513,9 +513,9 @@ function _M.new(url, opts)
         end
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Renew RPC registrations after reconnection to WAMP server
-    -------------------------------------------
+    ---------------------------------------------------
     local function _renewRegistrations()
         local rpcs, rn = rpcRegs, rpcNames
 
@@ -526,11 +526,11 @@ function _M.new(url, opts)
         end
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Connection message callback
     --
     -- event - received data
-    -------------------------------------------
+    ---------------------------------------------------
     local function _wsOnMessage(event)
         local data, id, i, d, result, msg;
 
@@ -844,11 +844,11 @@ function _M.new(url, opts)
 
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Connection error callback
     --
     -- error - received error
-    -------------------------------------------
+    ---------------------------------------------------
     local function _wsOnError(error)
         _log('websocket OnError event fired')
 
@@ -857,9 +857,9 @@ function _M.new(url, opts)
         end
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Initialize internal callbacks
-    -------------------------------------------
+    ---------------------------------------------------
     local function _initWsCallbacks()
         ws:on_open(function(wsObj, wsProtocol, headers)
             _wsOnOpen(wsProtocol, headers)
@@ -875,9 +875,9 @@ function _M.new(url, opts)
         end)
     end
 
-    -------------------------------------------
+    ---------------------------------------------------
     -- Reconnection to WAMP server
-    -------------------------------------------
+    ---------------------------------------------------
     _wsReconnect = function ()
         _log('Reconnecting to websocket... Attempt No ' .. cache.reconnectingAttempts)
 
@@ -905,14 +905,13 @@ function _M.new(url, opts)
         end
     end
 
-    -----------------------------------
+    ---------------------------------------------------
     -- End of Instance private methods
-    -----------------------------------
+    ---------------------------------------------------
 
-    -----------------------------
+    ---------------------------------------------------
     -- Loowy instance public API
-    -----------------------------
-
+    ---------------------------------------------------
 
     ---------------------------------------------------
     -- Get or set options
@@ -931,30 +930,30 @@ function _M.new(url, opts)
         end
     end
 
-    -----------------------------------------------------
+    ---------------------------------------------------
     -- Get the status of last operation
     --
     -- @return {code, description}
     --          code: 0 - if operation was successful
     --          code > 0 - if error occurred
     --          description contains details about error
-    -----------------------------------------------------
+    ---------------------------------------------------
     function loowy:getOpStatus()
         return cache.opStatus
     end
 
-    ---------------------------
+    ---------------------------------------------------
     -- Get the WAMP Session ID
-    ---------------------------
+    ---------------------------------------------------
     function loowy:getSessionId()
         return cache.sessionId
     end
 
-    ------------------------------------
+    ---------------------------------------------------
     -- Connect to server
     --
     -- url - WAMP Server url (optional)
-    ------------------------------------
+    ---------------------------------------------------
     function loowy:connect(url)
         if url ~= nil then
             cache.url = url
@@ -965,9 +964,9 @@ function _M.new(url, opts)
         _initWsCallbacks()
     end
 
-    ---------------------------
+    ---------------------------------------------------
     -- Disconnect from server
-    ---------------------------
+    ---------------------------------------------------
     function loowy:disconnect()
         if cache.sessionId ~= nil then
             -- need to send goodbye message to server
@@ -981,9 +980,9 @@ function _M.new(url, opts)
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
     end
 
-    ------------------------------------
+    ---------------------------------------------------
     -- Abort WAMP session establishment
-    ------------------------------------
+    ---------------------------------------------------
     function loowy:abort()
         if not cache.sessionId and ws.state == 'OPEN' then
             _send({ WAMP_MSG_SPEC.ABORT, {}, 'wamp.error.abort' })
@@ -1507,9 +1506,9 @@ function _M.new(url, opts)
 
     end
 
-    ------------------------------------
+    ---------------------------------------------------
     -- End of Loowy instance public API
-    ------------------------------------
+    ---------------------------------------------------
 
     if opts ~= nil then
         -- Merging user options
