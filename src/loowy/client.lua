@@ -83,19 +83,16 @@ local WAMP_ERROR_MSG = {
     NO_CALLBACK_SPEC = { code = 3, description = "No required callback function specified!" },
     INVALID_PARAM = { code = 4, description = "Invalid parameter(s) specified!" },
     NON_EXIST_SUBSCRIBE_CONFIRM = { code = 5, description = "Received subscribe confirmation to non existent subscription!" },
-    NON_EXIST_SUBSCRIBE_ERROR = { code = 6, description = "Received error for non existent subscription!" },
+    NON_EXIST_REQUEST_ERROR = { code = 6, description = "Received error for non existent request!" },
     NON_EXIST_UNSUBSCRIBE = { code = 7, description = "Trying to unsubscribe from non existent subscription!" },
     NON_EXIST_SUBSCRIBE_UNSUBSCRIBED = { code = 8, description = "Received unsubscribe confirmation to non existent subscription!" },
-    NON_EXIST_PUBLISH_ERROR = { code = 9, description = "Received error for non existent publication!" },
     NON_EXIST_PUBLISH_PUBLISHED = { code = 10, description = "Received publish confirmation for non existent publication!" },
     NON_EXIST_SUBSCRIBE_EVENT = { code = 11, description = "Received event for non existent subscription!" },
     NO_DEALER = { code = 12, description = "Server doesn't provide dealer role!" },
     NON_EXIST_CALL_RESULT = { code = 13, description = "Received rpc result for non existent call!" },
-    NON_EXIST_CALL_ERROR = { code = 14, description = "Received rpc call error for non existent call!" },
     RPC_ALREADY_REGISTERED = { code = 15, description = "RPC already registered!" },
     NON_EXIST_RPC_REG = { code = 16, description = "Received rpc registration confirmation for non existent rpc!" },
     NON_EXIST_RPC_UNREG = { code = 17, description = "Received rpc unregistration confirmation for non existent rpc!" },
-    NON_EXIST_RPC_ERROR = { code = 18, description = "Received error for non existent rpc!" },
     NON_EXIST_RPC_INVOCATION = { code = 19, description = "Received invocation for non existent rpc!" },
     NON_EXIST_RPC_REQ_ID = { code = 20, description = "No RPC calls in action with specified request ID!" },
     NO_REALM = { code = 21, description = "No realm specified!" },
@@ -160,7 +157,7 @@ function _M.new(url, opts)
     }
 
     -- WebSocket object
-    local ws = nil
+    local ws
 
     -- Internal queue for websocket requests, for case of disconnect
     -- @type array
@@ -353,12 +350,12 @@ function _M.new(url, opts)
     -- source - Source table
     -- @return merged table
     --------------------------------------------
-    local function _tblMerge(dest, source)
+    local function _tableMerge(dest, source)
         for k, v in pairs(source) do
             if (type(v) == "table" and type(dest[k]) == "table") then
                 -- don't overwrite one table with another
                 -- instead merge them recurisvely
-                _tblMerge(dest[k], v)
+                _tableMerge(dest[k], v)
             else
                 dest[k] = v
             end
@@ -419,8 +416,7 @@ function _M.new(url, opts)
 
         if ws ~= nil and ws.state == 'OPEN' and cache.sessionId ~= nil then
             while #wsQueue > 0 do
-                print 'Sending message to server'
-                print ('Payload: ' .. wsQueue[1])
+                _log('Sending message to server', 'Payload: ' .. wsQueue[1])
                 ws:send(table.remove(wsQueue, 1), options.transportType)
             end
         end
@@ -458,13 +454,15 @@ function _M.new(url, opts)
     -- Connection open callback
     -------------------------------------------
     local function _wsOnOpen(wsProtocol, headers)
-        print('websocket OnOpen event fired')
+        _log('websocket OnOpen event fired')
 
         if cache.timer ~= nil then
             local ev = require 'ev'
             cache.timer:stop(ev.Loop.default)
             cache.timer = nil
         end
+
+        local runtimeOptions = _tableMerge(_tableMerge({}, options.helloCustomDetails), WAMP_FEATURES)
 
         options.transportEncoding = string.match(wsProtocol,'.*%.([^.]+)$')
 
@@ -475,19 +473,18 @@ function _M.new(url, opts)
             options.transportType = ws_meta.BINARY
         end
 
-        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, WAMP_FEATURES }), options.transportType)
+        ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, runtimeOptions }), options.transportType)
     end
 
     -------------------------------------------
     -- Connection close callback
     -------------------------------------------
     local function _wsOnClose()
-        print('websocket OnClose event fired')
+        _log('websocket OnClose event fired')
 
         if (cache.sessionId or cache.reconnectingAttempts) and options.autoReconnect and
             cache.reconnectingAttempts < options.maxRetries and not cache.isSayingGoodbye then
             cache.sessionId = nil
-            cache.reconnectingAttempts = cache.reconnectingAttempts + 1
             local ev = require 'ev'
             cache.timer = ev.Timer.new(_wsReconnect, options.reconnectInterval, options.reconnectInterval)
             cache.timer:start(ev.Loop.default)
@@ -525,7 +522,7 @@ function _M.new(url, opts)
         rpcRegs, rpcNames = {}, {}
 
         for k, v in ipairs(rn) do
-            loowy:register(v, { rpc = rpcs[v].callbacks[0] })
+            loowy:register(v, { rpc = rpcs[v].callbacks[1] })
         end
     end
 
@@ -537,8 +534,8 @@ function _M.new(url, opts)
     local function _wsOnMessage(event)
         local data, id, i, d, result, msg;
 
-        print('websocket OnMessage event fired')
-        print('Message received: ' .. event)
+        _log('websocket OnMessage event fired')
+        _log('Message received: ' .. event)
 
         data = _decode(event);
 
@@ -548,15 +545,15 @@ function _M.new(url, opts)
             cache.sessionId = data[2]
             cache.serverWampFeatures = data[3]
 
-            if type(options.onConnect) == 'function' then
-                options.onConnect()
-            end
-
             if cache.reconnectingAttempts > 0 then
                 -- There was reconnection
                 cache.reconnectingAttempts = 0
                 _renewSubscriptions()
                 _renewRegistrations()
+            else
+                if type(options.onConnect) == 'function' then
+                    options.onConnect()
+                end
             end
 
             -- Send local queue if there is something out there
@@ -572,6 +569,8 @@ function _M.new(url, opts)
             ws = nil
 
         elseif data[1] == WAMP_MSG_SPEC.CHALLENGE then
+            -- WAMP SPEC: [CHALLENGE, AuthMethod|string, Extra|dict]
+            -- TODO implement CRA
 
         elseif data[1] == WAMP_MSG_SPEC.GOODBYE then
             -- WAMP SPEC: [GOODBYE, Details|dict, Reason|uri]
@@ -586,51 +585,25 @@ function _M.new(url, opts)
             ws:close()
             ws = nil
 
-        elseif data[1] == WAMP_MSG_SPEC.HEARTBEAT then
-
         elseif data[1] == WAMP_MSG_SPEC.ERROR then
             -- WAMP SPEC: [ERROR, REQUEST.Type|int, REQUEST.Request|id, Details|dict,
             --             Error|uri, (Arguments|list, ArgumentsKw|dict)]
 
             if data[2] == WAMP_MSG_SPEC.SUBSCRIBE or
-                data[2] == WAMP_MSG_SPEC.UNSUBSCRIBE then
-
-                if requests[data[3]] then
-
-                    if type(requests[data[3]].callbacks.onError) == 'function' then
-                        requests[data[3]].callbacks.onError(data[5])
-                    end
-
-                    requests[data[3]] = nil
-                else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_ERROR
-                end
-
-            elseif data[2] == WAMP_MSG_SPEC.PUBLISH then
-
-                if requests[data[3]] then
-
-                    if type(requests[data[3]].callbacks.onError) == 'function' then
-                        requests[data[3]].callbacks.onError(data[5])
-                    end
-
-                    requests[data[3]] = nil
-                else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_PUBLISH_ERROR
-                end
-
-            elseif data[2] == WAMP_MSG_SPEC.REGISTER or
+                data[2] == WAMP_MSG_SPEC.UNSUBSCRIBE or
+                data[2] == WAMP_MSG_SPEC.PUBLISH or
+                data[2] == WAMP_MSG_SPEC.REGISTER or
                 data[2] == WAMP_MSG_SPEC.UNREGISTER then
 
                 if requests[data[3]] then
 
                     if type(requests[data[3]].callbacks.onError) == 'function' then
-                        requests[data[3]].callbacks.onError(data[5])
+                        requests[data[3]].callbacks.onError(data[5], data[4], data[6], data[7])
                     end
 
                     requests[data[3]] = nil
                 else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_ERROR
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_REQUEST_ERROR
                 end
 
             elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
@@ -643,16 +616,19 @@ function _M.new(url, opts)
                         -- WAMP SPEC: [ERROR, CALL, CALL.Request|id, Details|dict,
                         --             Error|uri, Arguments|list, ArgumentsKw|dict]
 
-                        calls[data[3]].onError(data[7] or data[6] or data[5])
+                        calls[data[3]].onError(data[5], data[4], data[6], data[7])
                     end
 
                     calls[data[3]] = nil
 
                 else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_CALL_ERROR
+                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_REQUEST_ERROR
                 end
 
+            else
+                _log('Received non-compliant WAMP ERROR message')
             end
+
         elseif data[1] == WAMP_MSG_SPEC.SUBSCRIBED then
             -- WAMP SPEC: [SUBSCRIBED, SUBSCRIBE.Request|id, Subscription|id]
 
@@ -718,10 +694,8 @@ function _M.new(url, opts)
 
             if subscriptions[data[2]] then
 
-                local payload = data[6] or data[5] or nil
-
                 for k, callback in ipairs(subscriptions[data[2]].callbacks) do
-                    callback(payload)
+                    callback(data[5], data[6])
                 end
 
             else
@@ -733,9 +707,7 @@ function _M.new(url, opts)
 
             if calls[data[2]] then
 
-                local payload = data[5] or data[4] or nil
-
-                calls[data[2]].onSuccess(payload)
+                calls[data[2]].onSuccess(data[4], data[5])
                 if not (data[3].progress) then
                     -- We've received final result (progressive or not)
                     calls[data[2]] = nil
@@ -800,33 +772,60 @@ function _M.new(url, opts)
 
             if rpcRegs[data[3]] then
 
-                local payload = data[6] or data[5] or nil
-                local result
-
-                local status, result = pcall(rpcRegs[data[3]].callbacks[1], payload)
+                local msg
+                local status, result = pcall(rpcRegs[data[3]].callbacks[1], data[5], data[6], data[4])
 
                 if status then
 
-                    local msg
+                    msg =  { WAMP_MSG_SPEC.YIELD, data[2], {} }
                     -- WAMP SPEC: [YIELD, INVOCATION.Request|id, Options|dict, (Arguments|list, ArgumentsKw|dict)]
 
-                    if result == nil then
-                        msg =  { WAMP_MSG_SPEC.YIELD, data[2], {} }
-                    elseif type(result) == 'table' and result[1] ~= nil then -- assume it's an array
-                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, result }
-                    elseif type(result) == 'table' then    -- it's a dict
-                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, setmetatable({}, { __is_luajson_array = true }), result }
-                    else    -- assume it's a single value
-                        msg = { WAMP_MSG_SPEC.YIELD, data[2], {}, { result } }
+                    if type(result) == 'table' then
+
+                        msg[3] = result[1]  -- Options
+
+                        if type(result[2]) == 'table' and result[2][1] ~= nil then
+                            table.insert(msg, result[2])
+                        elseif result[2] ~= nil then
+                            table.insert(msg, { result[2] })
+                        end
+
+                        if type(result[3]) == 'table' then
+                            if #msg == 3 then
+                                table.insert(msg, nil)
+                            end
+                            table.insert(msg, result[3])
+                        end
                     end
-
-                    _send(msg)
-
                 else
-                    _send({ WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION,
-                            data[2], {}, 'wamp.error.invocation_exception' })
-                end
+                    -- WAMP SPEC: [ERROR, INVOCATION, INVOCATION.Request|id, Details|dict,
+                    --             Error|uri, Arguments|list, ArgumentsKw|dict]
+                    msg = { WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION, data[2],
+                                  {}, 'wamp.error.invocation_exception' }
 
+                    if type(result) == 'table' then
+
+                        if result.details then
+                            msg[4] = result.details
+                        end
+
+                        if result.uri then
+                            msg[5] = result.uri
+                        end
+
+                        if result.argsList then
+                            table.insert(msg, result.argsList)
+                        end
+
+                        if result.argsDict then
+                            if #msg == 5 then
+                                table.insert(msg, nil)
+                            end
+                            table.insert(msg, result.argsDict)
+                        end
+                    end
+                end
+                _send(msg)
             else
                 -- WAMP SPEC: [ERROR, INVOCATION, INVOCATION.Request|id, Details|dict, Error|uri]
                 _send({ WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION,
@@ -839,6 +838,8 @@ function _M.new(url, opts)
 
         elseif data[1] == WAMP_MSG_SPEC.YIELD then
 
+        else
+            _log('Received non-compliant WAMP message')
         end
 
     end
@@ -849,7 +850,7 @@ function _M.new(url, opts)
     -- error - received error
     -------------------------------------------
     local function _wsOnError(error)
-        print('websocket OnError event fired')
+        _log('websocket OnError event fired')
 
         if type(options.onError) == 'function' then
             options.onError(options.onError, error)
@@ -878,7 +879,7 @@ function _M.new(url, opts)
     -- Reconnection to WAMP server
     -------------------------------------------
     _wsReconnect = function ()
-        print('Reconnecting to websocket... Attempt No ' .. cache.reconnectingAttempts)
+        _log('Reconnecting to websocket... Attempt No ' .. cache.reconnectingAttempts)
 
         if cache.reconnectingAttempts >= options.maxRetries then
             if cache.timer ~= nil then
