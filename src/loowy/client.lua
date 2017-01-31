@@ -323,6 +323,37 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
+    -- Prerequisite checks for any api call
+    --
+    -- topicURI - string
+    -- role - string
+    -- api call callbacks
+    -- @return boolean
+    ---------------------------------------------------
+    local function _preReqChecks(topicURI, role, callbacks)
+        local flag = true
+
+        if cache.sessionId and not cache.serverWampFeatures.roles[role] then
+            cache.opStatus = WAMP_ERROR_MSG['NO_' .. string.upper(role)]
+            flag = false
+        end
+
+        if topicURI and not _validateURI(topicURI) then
+            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
+            flag = false
+        end
+
+        if flag then
+            return true
+        end
+
+        if type(callbacks) == 'table' and type(callbacks.onError) == 'function' then
+            callbacks.onError(cache.opStatus.description)
+        end
+        return false
+    end
+
+    ---------------------------------------------------
     -- Return index of obj in array t
     --
     -- t - array table
@@ -923,9 +954,7 @@ function _M.new(url, opts)
         if opts == nil then
             return options
         else
-            for k, v in pairs(opts) do
-                options[k] = v
-            end
+            _tableMerge(options, opts)
             _setWsProtocols()
         end
     end
@@ -937,6 +966,7 @@ function _M.new(url, opts)
     --          code: 0 - if operation was successful
     --          code > 0 - if error occurred
     --          description contains details about error
+    --          reqId: last send request ID
     ---------------------------------------------------
     function loowy:getOpStatus()
         return cache.opStatus
@@ -959,9 +989,13 @@ function _M.new(url, opts)
             cache.url = url
         end
 
-        ws = require('websocket.client').ev()
-        ws:connect(cache.url, cache.protocols)
-        _initWsCallbacks()
+        if options.realm then
+            ws = require('websocket.client').ev()
+            ws:connect(cache.url, cache.protocols)
+            _initWsCallbacks()
+        else
+            cache.opStatus = WAMP_ERROR_MSG.NO_REALM
+        end
     end
 
     ---------------------------------------------------
@@ -1008,23 +1042,7 @@ function _M.new(url, opts)
     function loowy:subscribe(topicURI, callbacks)
         local reqId
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.broker then
-            cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
-            return
-        end
-
-        if not _validateURI(topicURI) then
-            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(topicURI, 'broker', callbacks) then
             return
         end
 
@@ -1042,7 +1060,7 @@ function _M.new(url, opts)
             return
         end
 
-        if not subscriptions[topicURI] then     -- no such subscription
+        if not subscriptions[topicURI] or #subscriptions[topicURI].callbacks == 0 then     -- no such subscription
 
             reqId = _getReqId()
 
@@ -1065,7 +1083,7 @@ function _M.new(url, opts)
         end
 
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
-
+        cache.opStatus.reqId = reqId;
     end
 
     ---------------------------------------------------------------------------------------------
@@ -1082,13 +1100,7 @@ function _M.new(url, opts)
         local reqId
         local i = -1
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.broker then
-            cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(nil, 'broker', callbacks) then
             return
         end
 
@@ -1134,7 +1146,7 @@ function _M.new(url, opts)
         end
 
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
-
+        cache.opStatus.reqId = reqId;
     end
 
     ----------------------------------------------------------------------------------------------------------------
@@ -1146,35 +1158,28 @@ function _M.new(url, opts)
     --                           { onSuccess: will be called when publishing would be confirmed
     --                             onError: will be called if publishing would be aborted }
     -- advancedOptions - optional parameter. Must include any or all of the options:
-    --                   { exclude: integer|array WAMP session id(s) that won't receive a published event,
-    --                              even though they may be subscribed
-    --                     eligible: integer|array WAMP session id(s) that are allowed to receive a published event
-    --                     exclude_me: bool flag of receiving publishing event by initiator
-    --                     disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
-    --                                  to receivers of a published event }
+    --                         { exclude: integer|array WAMP session id(s) that won't receive a published event,
+    --                                     even though they may be subscribed
+    --                           exclude_authid: string|array Authentication id(s) that won't receive
+    --                                     a published event, even though they may be subscribed
+    --                           exclude_authrole: string|array Authentication role(s) that won't receive
+    --                                     a published event, even though they may be subscribed
+    --                           eligible: integer|array WAMP session id(s) that are allowed
+    --                                     to receive a published event
+    --                           eligible_authid: string|array Authentication id(s) that are allowed
+    --                                     to receive a published event
+    --                           eligible_authrole: string|array Authentication role(s) that are allowed
+    --                                     to receive a published event
+    --                           exclude_me: bool flag of receiving publishing event by initiator
+    --                           disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
+    --                                     to receivers of a published event }
     ----------------------------------------------------------------------------------------------------------------
     function loowy:publish(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
         local options = {}
         local err = false
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.broker then
-            cache.opStatus = WAMP_ERROR_MSG.NO_BROKER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
-            return
-        end
-
-        if not _validateURI(topicURI) then
-            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(topicURI, 'broker', callbacks) then
             return
         end
 
@@ -1194,11 +1199,51 @@ function _M.new(url, opts)
                 end
             end
 
+            if advancedOptions.exclude_authid then
+                if type(advancedOptions.exclude_authid) == 'table' then
+                    options.exclude_authid = advancedOptions.exclude_authid
+                elseif type(advancedOptions.exclude_authid) == 'number' then
+                    options.exclude_authid = { advancedOptions.exclude_authid }
+                else
+                    err = true
+                end
+            end
+
+            if advancedOptions.exclude_authrole then
+                if type(advancedOptions.exclude_authrole) == 'table' then
+                    options.exclude_authrole = advancedOptions.exclude_authrole
+                elseif type(advancedOptions.exclude_authrole) == 'number' then
+                    options.exclude_authrole = { advancedOptions.exclude_authrole }
+                else
+                    err = true
+                end
+            end
+
             if advancedOptions.eligible then
                 if type(advancedOptions.eligible) == 'table' then
                     options.eligible = advancedOptions.eligible
                 elseif type(advancedOptions.eligible) == 'number' then
                     options.eligible = { advancedOptions.eligible }
+                else
+                    err = true
+                end
+            end
+
+            if advancedOptions.eligible_authid then
+                if type(advancedOptions.eligible_authid) == 'table' then
+                    options.eligible_authid = advancedOptions.eligible_authid
+                elseif type(advancedOptions.eligible_authid) == 'number' then
+                    options.eligible_authid = { advancedOptions.eligible_authid }
+                else
+                    err = true
+                end
+            end
+
+            if advancedOptions.eligible_authrole then
+                if type(advancedOptions.eligible_authrole) == 'table' then
+                    options.eligible_authrole = advancedOptions.eligible_authrole
+                elseif type(advancedOptions.eligible_authrole) == 'number' then
+                    options.eligible_authrole = { advancedOptions.eligible_authrole }
                 else
                     err = true
                 end
@@ -1222,7 +1267,6 @@ function _M.new(url, opts)
 
                 return
             end
-
         end
 
         reqId = _getReqId()
@@ -1247,7 +1291,7 @@ function _M.new(url, opts)
 
         _send(msg)
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
-
+        cache.opStatus.reqId = reqId;
     end
 
     --------------------------------------------------------------------------------------------------------------------
