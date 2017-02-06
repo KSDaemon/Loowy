@@ -1304,11 +1304,7 @@ function _M.new(url, opts)
     --                     { onSuccess: will be called with result on successful call
     --                       onError: will be called if invocation would be aborted }
     -- advancedOptions - optional parameter. Must include any or all of the options:
-    --                   { exclude: integer|array WAMP session id(s) providing an explicit list of (potential)
-    --                              Callees that a call won't be forwarded to, even though they might be registered
-    --                     eligible: integer|array WAMP session id(s) providing an explicit list of (potential)
-    --                               Callees that are (potentially) forwarded the call issued
-    --                     exclude_me: bool flag of potentially forwarding call to caller if he is registered as callee
+    --                   { exclude_me: bool flag of potentially forwarding call to caller if he is registered as callee
     --                     disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
     --                                  to endpoints of a routed call
     --                     receive_progress: bool flag for receiving progressive results. In this case
@@ -1319,23 +1315,7 @@ function _M.new(url, opts)
         local options = {}
         local err = false
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
-            cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
-            return
-        end
-
-        if not _validateURI(topicURI) then
-            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(topicURI, 'dealer', callbacks) then
             return
         end
 
@@ -1355,36 +1335,22 @@ function _M.new(url, opts)
 
         if type(advancedOptions) == 'table' then
 
-            if advancedOptions.exclude then
-                if type(advancedOptions.exclude) == 'table' then
-                    options.exclude = advancedOptions.exclude
-                elseif type(advancedOptions.exclude) == 'number' then
-                    options.exclude = { advancedOptions.exclude }
-                else
-                    err = true
-                end
-            end
-
-            if advancedOptions.eligible then
-                if type(advancedOptions.eligible) == 'table' then
-                    options.eligible = advancedOptions.eligible
-                elseif type(advancedOptions.eligible) == 'number' then
-                    options.eligible = { advancedOptions.eligible }
-                else
-                    err = true
-                end
-            end
-
             if type(advancedOptions.exclude_me) == 'boolean' then
                 options.exclude_me = advancedOptions.exclude_me ~= false
+            else
+                err = true
             end
 
             if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
+            else
+                err = true
             end
 
             if type(advancedOptions.receive_progress) == 'boolean' then
                 options.receive_progress = advancedOptions.receive_progress == true
+            else
+                err = true
             end
 
             if err then
@@ -1397,7 +1363,6 @@ function _M.new(url, opts)
 
                 return
             end
-
         end
 
         reqId = _getReqId()
@@ -1421,7 +1386,54 @@ function _M.new(url, opts)
 
         _send(msg)
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+        cache.opStatus.reqId = reqId;
+    end
 
+    ------------------------------------------------------------------------------------------
+    -- RPC invocation cancelling
+    --
+    -- reqId - RPC call request ID
+    -- callbacks - if it is a function - it will be called if successfully
+    --                          sent canceling message or it can be hash table of callbacks:
+    --                          { onSuccess: will be called if successfully sent canceling message
+    --                            onError: will be called if some error occurred }
+    -- advancedOptions - optional parameter. Must include any or all of the options:
+    --                          { mode: string|one of the possible modes:
+    --                                  "skip" | "kill" | "killnowait". Skip is default }
+    ------------------------------------------------------------------------------------------
+    function loowy:cancel(reqId, callbacks, advancedOptions)
+        local options = { mode = 'skip' }
+
+        if not _preReqChecks(nil, 'dealer', callbacks) then
+            return
+        end
+
+        if not reqId or not calls[reqId] then
+            cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_REQ_ID
+
+            if type(callbacks.onError) == 'function' then
+                callbacks.onError(cache.opStatus.description)
+            end
+
+            return
+        end
+
+        if type(advancedOptions) == 'table' and type(advancedOptions.mode) == 'string' then
+
+            if string.find(advancedOptions.mode, '^skip$') or
+               string.find(advancedOptions.mode, '^kill$') or
+               string.find(advancedOptions.mode, '^killnowait$') then
+                options.mode = advancedOptions.mode
+            end
+        end
+
+        _send({ WAMP_MSG_SPEC.CANCEL, reqId, options })
+        cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+        cache.opStatus.reqId = reqId;
+
+        if type(callbacks.onSuccess) == 'function' then
+            callbacks.onSuccess()
+        end
     end
 
     ------------------------------------------------------------------------------------------
@@ -1437,23 +1449,7 @@ function _M.new(url, opts)
     function loowy:register(topicURI, callbacks)
         local reqId
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
-            cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
-            return
-        end
-
-        if not _validateURI(topicURI) then
-            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(topicURI, 'dealer', callbacks) then
             return
         end
 
@@ -1471,7 +1467,7 @@ function _M.new(url, opts)
             return
         end
 
-        if not rpcRegs[topicURI] then     -- no such registration
+        if not rpcRegs[topicURI] or #rpcRegs[topicURI].callbacks == 0 then     -- no such registration
 
             reqId = _getReqId()
 
@@ -1479,6 +1475,8 @@ function _M.new(url, opts)
 
             -- WAMP SPEC: [REGISTER, Request|id, Options|dict, Procedure|uri]
             _send({ WAMP_MSG_SPEC.REGISTER, reqId, {}, topicURI })
+            cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+            cache.opStatus.reqId = reqId;
 
         else    -- already have registration with such topicURI
 
@@ -1489,9 +1487,6 @@ function _M.new(url, opts)
             end
 
         end
-
-        cache.opStatus = WAMP_ERROR_MSG.SUCCESS
-
     end
 
     -------------------------------------------------------------------------------------------
@@ -1506,23 +1501,7 @@ function _M.new(url, opts)
     function loowy:unregister(topicURI, callbacks)
         local reqId
 
-        if cache.sessionId and not cache.serverWampFeatures.roles.dealer then
-            cache.opStatus = WAMP_ERROR_MSG.NO_DEALER
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
-            return
-        end
-
-        if not _validateURI(topicURI) then
-            cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
-
-            if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
-            end
-
+        if not _preReqChecks(topicURI, 'dealer', callbacks) then
             return
         end
 
@@ -1539,15 +1518,15 @@ function _M.new(url, opts)
             -- WAMP SPEC: [UNREGISTER, Request|id, REGISTERED.Registration|id]
             _send({ WAMP_MSG_SPEC.UNREGISTER, reqId, rpcRegs[topicURI].id })
             cache.opStatus = WAMP_ERROR_MSG.SUCCESS
+            cache.opStatus.reqId = reqId;
         else    -- already have registration with such topicURI
 
-            cache.opStatus = WAMP_ERROR_MSG.RPC_ALREADY_REGISTERED
+            cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_UNREG
 
             if type(callbacks.onError) == 'function' then
                 callbacks.onError(cache.opStatus.description)
             end
         end
-
     end
 
     ---------------------------------------------------
@@ -1556,9 +1535,7 @@ function _M.new(url, opts)
 
     if opts ~= nil then
         -- Merging user options
-        for k, v in pairs(opts) do
-            options[k] = v
-        end
+        _tableMerge(options, opts)
         _setWsProtocols()
     end
 
