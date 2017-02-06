@@ -382,13 +382,15 @@ function _M.new(url, opts)
     -- @return merged table
     ---------------------------------------------------
     local function _tableMerge(dest, source)
-        for k, v in pairs(source) do
-            if (type(v) == "table" and type(dest[k]) == "table") then
-                -- don't overwrite one table with another
-                -- instead merge them recurisvely
-                _tableMerge(dest[k], v)
-            else
-                dest[k] = v
+        if type(source) == "table" then
+            for k, v in pairs(source) do
+                if (type(v) == "table" and type(dest[k]) == "table") then
+                    -- don't overwrite one table with another
+                    -- instead merge them recurisvely
+                    _tableMerge(dest[k], v)
+                else
+                    dest[k] = v
+                end
             end
         end
 
