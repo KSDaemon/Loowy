@@ -581,6 +581,11 @@ function _M.new(url, opts)
             if cache.reconnectingAttempts > 0 then
                 -- There was reconnection
                 cache.reconnectingAttempts = 0
+
+                if type(options.onReconnectSuccess) == 'function' then
+                    options.onReconnectSuccess()
+                end
+
                 _renewSubscriptions()
                 _renewRegistrations()
             else
