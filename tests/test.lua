@@ -49,8 +49,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                     onSuccess = function()
                         print 'Got to another topic topic.test1 subscribe onSuccess'
                     end,
-                    onError = function()
-                        print 'Got to another topic topic.test1 subscribe onError'
+                    onError = function(err)
+                        print ('Got to another topic topic.test1 subscribe onError: ' .. err)
                     end,
                     onEvent = function(evt)
                         print 'Got to another topic topic.test1 subscribe onEvent'
@@ -59,8 +59,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                     end
                 })
             end,
-            onError = function()
-                print 'Got to topic topic.test1 subscribe onError'
+            onError = function(err)
+                print ('Got to topic topic.test1 subscribe onError: ' .. err)
             end,
             onEvent = function(evt)
                 print 'Got to topic topic.test1 subscribe onEvent'
@@ -74,8 +74,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onSuccess = function()
                 print 'Got to publish to topic topic.test1 onSuccess'
             end,
-            onError = function()
-                print 'Got to publish to topic topic.test1 onError'
+            onError = function(err)
+                print ('Got to publish to topic topic.test1 onError: ' .. err)
             end
         }, { disclose_me = true, exclude_me = false })
 
@@ -84,8 +84,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onSuccess = function()
                 print 'Got to publish to topic topic.test1 onSuccess'
             end,
-            onError = function()
-                print 'Got to publish to topic topic.test1 onError'
+            onError = function(err)
+                print ('Got to publish to topic topic.test1 onError: ' .. err)
             end
         }, { disclose_me = true, exclude_me = false })
 
@@ -94,8 +94,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onSuccess = function()
                 print 'Got to publish to topic topic.test1 onSuccess'
             end,
-            onError = function()
-                print 'Got to publish to topic topic.test1 onError'
+            onError = function(err)
+                print ('Got to publish to topic topic.test1 onError: ' .. err)
             end
         }, { disclose_me = true, exclude_me = false })
 
@@ -104,8 +104,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onSuccess = function()
                 print 'Got to publish to topic topic.test1 onSuccess'
             end,
-            onError = function()
-                print 'Got to publish to topic topic.test1 onError'
+            onError = function(err)
+                print ('Got to publish to topic topic.test1 onError: ' .. err)
             end
         }, { disclose_me = true, exclude_me = false })
 
@@ -114,8 +114,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onSuccess = function()
                 print 'Got to publish to topic topic.test1 onSuccess'
             end,
-            onError = function()
-                print 'Got to publish to topic topic.test1 onError'
+            onError = function(err)
+                print ('Got to publish to topic topic.test1 onError: ' .. err)
             end
         }, { disclose_me = true, exclude_me = false })
 
@@ -133,14 +133,14 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         onSuccess = function()
                             print 'Got to publish to unsubscribed topic topic.test1 onSuccess'
                         end,
-                        onError = function()
-                            print 'Got to publish to unsubscribed topic topic.test1 onError'
+                        onError = function(err)
+                            print ('Got to publish to unsubscribed topic topic.test1 onError: ' .. err)
                         end
                     }, { disclose_me = true, exclude_me = false })
 
                 end,
-                onError = function()
-                    print 'Got to unsubscribe from topic topic.test1 onError'
+                onError = function(err)
+                    print ('Got to unsubscribe from topic topic.test1 onError: ' .. err)
                 end
             })
         end, 10)
@@ -164,8 +164,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         print 'Call result'
                         var_dump(data)
                     end,
-                    onError = function()
-                        print 'Got to rpc call rpc.test1 onError'
+                    onError = function(err)
+                        print ('Got to rpc call rpc.test1 onError: ' .. err)
                     end
 
                 }, { disclose_me = true, exclude_me = false })
@@ -177,8 +177,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         print 'Call result'
                         var_dump(data)
                     end,
-                    onError = function()
-                        print 'Got to rpc call rpc.test1 onError'
+                    onError = function(err)
+                        print ('Got to rpc call rpc.test1 onError: ' .. err)
                     end
 
                 }, { disclose_me = true, exclude_me = false })
@@ -190,8 +190,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         print 'Call result'
                         var_dump(data)
                     end,
-                    onError = function()
-                        print 'Got to rpc call rpc.test1 onError'
+                    onError = function(err)
+                        print ('Got to rpc call rpc.test1 onError: ' .. err)
                     end
 
                 }, { disclose_me = true, exclude_me = false })
@@ -203,8 +203,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         print 'Call result'
                         var_dump(data)
                     end,
-                    onError = function()
-                        print 'Got to rpc call rpc.test1 onError'
+                    onError = function(err)
+                        print ('Got to rpc call rpc.test1 onError: ' .. err)
                     end
 
                 }, { disclose_me = true, exclude_me = false })
@@ -216,15 +216,15 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                         print 'Call result'
                         var_dump(data)
                     end,
-                    onError = function()
-                        print 'Got to rpc call rpc.test1 onError'
+                    onError = function(err)
+                        print ('Got to rpc call rpc.test1 onError: ' .. err)
                     end
 
                 }, { disclose_me = true, exclude_me = false })
 
             end,
-            onError = function()
-                print 'Got to register rpc rpc.test1 onError'
+            onError = function(err)
+                print ('Got to register rpc rpc.test1 onError: ' .. err)
             end
         })
 
@@ -244,8 +244,8 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             firstDisconnect = false
         end
     end,
-    onError = function()
-        print 'Got to WAMP Client instance onError callback'
+    onError = function(err)
+        print ('Got to WAMP Client instance onError callback: ' .. err)
     end,
     onReconnect = function()
         print 'Got to WAMP Client instance onReconnect callback'
