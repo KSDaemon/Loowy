@@ -1209,7 +1209,7 @@ function _M.new(url, opts)
             if advancedOptions.exclude_authid then
                 if type(advancedOptions.exclude_authid) == 'table' then
                     options.exclude_authid = advancedOptions.exclude_authid
-                elseif type(advancedOptions.exclude_authid) == 'number' then
+                elseif type(advancedOptions.exclude_authid) == 'string' then
                     options.exclude_authid = { advancedOptions.exclude_authid }
                 else
                     err = true
@@ -1219,7 +1219,7 @@ function _M.new(url, opts)
             if advancedOptions.exclude_authrole then
                 if type(advancedOptions.exclude_authrole) == 'table' then
                     options.exclude_authrole = advancedOptions.exclude_authrole
-                elseif type(advancedOptions.exclude_authrole) == 'number' then
+                elseif type(advancedOptions.exclude_authrole) == 'string' then
                     options.exclude_authrole = { advancedOptions.exclude_authrole }
                 else
                     err = true
@@ -1239,7 +1239,7 @@ function _M.new(url, opts)
             if advancedOptions.eligible_authid then
                 if type(advancedOptions.eligible_authid) == 'table' then
                     options.eligible_authid = advancedOptions.eligible_authid
-                elseif type(advancedOptions.eligible_authid) == 'number' then
+                elseif type(advancedOptions.eligible_authid) == 'string' then
                     options.eligible_authid = { advancedOptions.eligible_authid }
                 else
                     err = true
@@ -1249,7 +1249,7 @@ function _M.new(url, opts)
             if advancedOptions.eligible_authrole then
                 if type(advancedOptions.eligible_authrole) == 'table' then
                     options.eligible_authrole = advancedOptions.eligible_authrole
-                elseif type(advancedOptions.eligible_authrole) == 'number' then
+                elseif type(advancedOptions.eligible_authrole) == 'string' then
                     options.eligible_authrole = { advancedOptions.eligible_authrole }
                 else
                     err = true
