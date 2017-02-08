@@ -1258,10 +1258,14 @@ function _M.new(url, opts)
 
             if type(advancedOptions.exclude_me) == 'boolean' then
                 options.exclude_me = advancedOptions.exclude_me ~= false
+            elseif advancedOptions.exclude_me ~= nil then
+                err = true
             end
 
             if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
+            elseif advancedOptions.disclose_me ~= nil then
+                err = true
             end
 
             if err then
@@ -1344,19 +1348,19 @@ function _M.new(url, opts)
 
             if type(advancedOptions.exclude_me) == 'boolean' then
                 options.exclude_me = advancedOptions.exclude_me ~= false
-            else
+            elseif advancedOptions.exclude_me ~= nil then
                 err = true
             end
 
             if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
-            else
+            elseif advancedOptions.disclose_me ~= nil then
                 err = true
             end
 
             if type(advancedOptions.receive_progress) == 'boolean' then
                 options.receive_progress = advancedOptions.receive_progress == true
-            else
+            elseif advancedOptions.receive_progress ~= nil then
                 err = true
             end
 
@@ -1391,6 +1395,7 @@ function _M.new(url, opts)
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
         end
 
+        var_dump(msg)
         _send(msg)
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
         cache.opStatus.reqId = reqId;
