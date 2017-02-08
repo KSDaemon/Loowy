@@ -17,10 +17,12 @@ Table of Contents
     * [connect](#connecturl)
     * [disconnect](#disconnect)
     * [abort](#abort)
+    * [Challenge Response Authentication](#challenge-response-authentication)
     * [subscribe](#subscribetopicuri-callbacks)
     * [unsubscribe](#unsubscribetopicuri-callbacks)
     * [publish](#publishtopicuri-payload-callbacks-advancedoptions)
     * [call](#calltopicuri-payload-callbacks-advancedoptions)
+    * [cancel](#cancelreqid-callbacks-advancedoptions)
     * [register](#registertopicuri-callbacks)
     * [unregister](#unregistertopicuri-callbacks)
 * [Copyright and License](#copyright-and-license)
@@ -29,21 +31,23 @@ Table of Contents
 Description
 ===========
 
-Loowy implements [WAMP](http://wamp.ws) v2 client specification.
+Loowy implements [WAMP][] v2 client specification.
 
 Loowy supports next WAMP roles and features:
 
+* Challenge Response Authentication (wampcra method)
 * publisher: advanced profile with features:
     * subscriber blackwhite listing
     * publisher exclusion
     * publisher identification
-* subscriber: basic profile.
+* subscriber: basic profile
 * caller: advanced profile with features:
-    * callee blackwhite listing.
-    * caller exclusion.
-    * caller identification.
-    * progressive call results.
-* callee: basic profile.
+    * caller identification
+    * progressive call results
+    * call canceling
+    * call timeout
+* callee:
+    * caller identification
 
 Loowy supports JSON and msgpack serializers.
 
@@ -98,18 +102,28 @@ options() method can be called in two forms:
 
 Options keys description:
 
+* **debug**. Default value: false. Enable to print some debugging info.
 * **autoReconnect**. Default value: true. Enable autoreconnecting. In case of connection failure, 
 Loowy will try to reconnect to WAMP server, and if you were subscribed to any topics,
 or had registered some procedures, Loowy will resubscribe to that topics and reregister procedures.
 * **reconnectInterval**. Default value: 2(s). Reconnection Interval in seconds.
 * **maxRetries**. Default value: 25. Max reconnection attempts. After reaching this value [disconnect()](#disconnect)
-will be called
-* **transportEncoding**. Default value: json. Transport serializer to use. Supported 2 values: json|msgpack.
+will be called.
+* **transportEncoding**. Default value: json. Transport serializer to use. Supported 2 values: "json"|"msgpack".
 * **realm**. Default value: nil. WAMP Realm to join on server. See WAMP spec for additional info.
-* **onConnect**. Default value: undefined. Callback function. Fired when connection to wamp server is established.
-* **onClose**. Default value: undefined. Callback function. Fired on closing connection to wamp server.
-* **onError**. Default value: undefined. Callback function. Fired on error in websocket communication.
-* **onReconnect**. Default value: undefined. Callback function. Fired every time on reconnection attempt.
+* **helloCustomDetails**. Default value: nil. Custom attributes to send to router on hello.
+* **authid**. Default value: nil. Authentication (user) id to use in challenge.
+* **authmethods**. Default value: {}. Array of strings of supported authentication methods.
+* **onChallenge**. Default value: nil. Callback function.
+Is fired when wamp server requests authentication during session establishment.
+This function receives two arguments: auth method and challenge details.
+Function should return computed signature, based on challenge details.
+See [Challenge Response Authentication](#challenge-response-authentication) section and [WAMP Spec CRA][] for more info.
+* **onConnect**. Default value: nil. Callback function. Fired when connection to wamp server is established.
+* **onClose**. Default value: nil. Callback function. Fired on closing connection to wamp server.
+* **onError**. Default value: nil. Callback function. Fired on error in websocket communication.
+* **onReconnect**. Default value: nil. Callback function. Fired every time on reconnection attempt.
+* **onReconnectSuccess**. Default value: nil. Callback function. Fired every time when reconnection succeeded.
 
 [Back to TOC](#table-of-contents)
 
@@ -118,11 +132,10 @@ getOpStatus()
 
 Get the status of last operation.
 
-returns table: `{code, description}` where:
-
-* code: 0 - if operation was successful,
-* code > 0 - if error occurred,
-* description contains details about error
+This method returns table with 2 or 3 keys: code and description and possible request ID.
+`code` is integer, and value > 0 means error.
+`description` is a string description of code.
+`reqId` is integer and may be useful in some cases (call canceling for example).
 
 [Back to TOC](#table-of-contents)
 
@@ -136,7 +149,7 @@ Get the WAMP Session ID.
 connect([url])
 ------------------------------------------
 
-Connect to server. 
+Connect to WAMP router. 
 
 Parameters:
 
@@ -147,7 +160,7 @@ Parameters:
 disconnect()
 ------------------------------------------
 
-Disconnect from server.
+Disconnect from WAMP router.
 
 [Back to TOC](#table-of-contents)
 
@@ -156,6 +169,13 @@ abort()
 
 Abort WAMP session establishment. Works only if websocket connection is established, 
 but WAMP session establishment is in progress.
+
+[Back to TOC](#table-of-contents)
+
+Challenge Response Authentication
+------------------------------------------
+
+TBD
 
 [Back to TOC](#table-of-contents)
 
@@ -170,9 +190,13 @@ Parameters:
 * callbacks - if it is a function - it will be treated as published event callback 
 or it can be hash table of callbacks:
 
-        { onSuccess: will be called when subscribe would be confirmed
-          onError: will be called if subscribe would be aborted
-          onEvent: will be called on receiving published event }
+    { 
+        onSuccess: will be called when subscription would be confirmed
+        onError:   will be called if subscription would be aborted with 2-4 parameters:
+                (Error|uri|string, Details|object[, Arguments|list, ArgumentsKw|dict])
+        onEvent:   will be called on receiving published event with 2 parameters: 
+                (Arguments|array, ArgumentsKw|object) 
+    }
 
 [Back to TOC](#table-of-contents)
 
@@ -186,39 +210,55 @@ Parameters:
 * topicURI - topic to unsubscribe
 * callbacks - if it is a function - it will be treated as published event callback to remove or it can be hash table of callbacks:
 
-        { onSuccess: will be called when unsubscribe would be confirmed
-          onError: will be called if unsubscribe would be aborted
-          onEvent: published event callback to remove }
+    { 
+        onSuccess: will be called when unsubscription would be confirmed
+        onError: will be called if unsubscribe would be aborted with 2 parameters:
+                      (Error|uri|string, Details|object)
+        onEvent: published event callback to remove 
+    }
+or it can be not specified, in this case all callbacks and subscription will be removed.
 
 [Back to TOC](#table-of-contents)
 
-publish(topicURI, payload, callbacks, advancedOptions)
+publish(topicURI[, payload[, callbacks[, advancedOptions]]])
 ------------------------------------------
 
-Publish a event to topic.
+Publish event to topic.
 
 Parameters:
 
-* topicURI - topic to publish
+* topicURI - topic to publish to
 * payload - optional parameter, can be any value
 * callbacks - optional table of callbacks:
 
-        { onSuccess: will be called when publishing would be confirmed 
-          onError: will be called if publishing would be aborted }
+    { 
+        onSuccess: will be called when publishing would be confirmed
+        onError:   will be called if publishing would be aborted with 2-4 parameters:
+                (Error|uri|string, Details|object[, Arguments|list, ArgumentsKw|dict])
+    }
 
 * advancedOptions - optional parameter. Must include any or all of the options:
 
-        { exclude: integer|array WAMP session id(s) that won't receive a published
-                   event, even though they may be subscribed
-          eligible: integer|array WAMP session id(s) that are allowed 
-                   to receive a published event
-          exclude_me: bool flag of receiving publishing event by initiator
-          disclose_me: bool flag of disclosure of publisher identity 
-                   (its WAMP session ID) to receivers of a published event }
+    { 
+        exclude: integer|array WAMP session id(s) that won't receive a published event,
+                 even though they may be subscribed
+        exclude_authid: string|array Authentication id(s) that won't receive
+                        a published event, even though they may be subscribed
+        exclude_authrole: string|array Authentication role(s) that won't receive
+                          a published event, even though they may be subscribed
+        eligible: integer|array WAMP session id(s) that are allowed to receive a published event
+        eligible_authid: string|array Authentication id(s) that are allowed to receive a published event
+        eligible_authrole: string|array Authentication role(s) that are allowed
+                           to receive a published event
+        exclude_me: bool flag of receiving publishing event by initiator
+                         (if it is subscribed to this topic)
+        disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
+                         to receivers of a published event 
+    }
 
 [Back to TOC](#table-of-contents)
 
-call(topicURI, payload, callbacks, advancedOptions)
+call(topicURI[, payload[, callbacks[, advancedOptions]]])
 ------------------------------------------
 
 Remote Procedure Call.
@@ -226,23 +266,49 @@ Remote Procedure Call.
 Parameters:
 
 * topicURI - topic to call
-* payload - can be either a value of any type or null
+* payload - can be either a value of any type or nil
 * callbacks - if it is a function - it will be treated as result callback function or it can be hash table of callbacks:
 
-        { onSuccess: will be called with result on successful call
-          onError: will be called if invocation would be aborted }
+    { 
+        onSuccess: will be called with result on successful call with 2 parameters: 
+                        (Arguments|array, ArgumentsKw|object) 
+        onError: will be called if invocation would be aborted with 2-4 parameters:
+                      (Error|uri|string, Details|object[, Arguments|array, ArgumentsKw|object]) 
+    }
 
 * advancedOptions - optional parameter. Must include any or all of the options:
 
-        { exclude: integer|array WAMP session id(s) providing an explicit list of
-                   (potential) Callees that a call won't be forwarded to, 
-                   even though they might be registered
-          eligible: integer|array WAMP session id(s) providing an explicit list of
-                   (potential) Callees that are (potentially) forwarded the call issued
-          exclude_me: bool flag of potentially forwarding call to caller 
-                   if he is registered as callee
-          disclose_me: bool flag of disclosure of Caller identity 
-                   (WAMP session ID) to endpoints of a routed call }
+    { 
+        disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
+                        to endpoints of a routed call
+        receive_progress: bool flag for receiving progressive results. In this case onSuccess function
+                        will be called every time on receiving result
+        timeout: integer timeout (in ms) for the call to finish 
+    }
+
+[Back to TOC](#table-of-contents)
+
+cancel(reqId[, callbacks[, advancedOptions]])
+-----------------------------------------------
+
+RPC invocation cancelling.
+
+Parameters:
+
+* reqId - Request ID of RPC call that need to be canceled.
+* callbacks - optional parameter. If it is a function - it will be called if successfully sent canceling message
+            or it can be hash table of callbacks:
+
+    { 
+        onSuccess: will be called if successfully sent canceling message 
+        onError: will be called if some error occurred 
+    }
+
+* advancedOptions - optional parameter. Must include any or all of the options:
+
+    { 
+        mode: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default. 
+    }
 
 [Back to TOC](#table-of-contents)
 
@@ -256,24 +322,37 @@ Parameters:
 * topicURI - topic to register
 * callbacks - if it is a function - it will be treated as rpc itself or it can be hash table of callbacks:
 
-        { rpc: registered procedure
-          onSuccess: will be called on successful registration
-          onError: will be called if registration would be aborted }
+    { 
+        rpc: registered procedure
+        onSuccess: will be called on successful registration
+        onError: will be called if registration would be aborted 
+    }
+
+Also it is possible to abort rpc processing and throw error with custom application specific data. 
+This data will be passed to caller onError callback. 
+Exception object with custom data may have next attributes:
+* **uri**. String with custom error uri.
+* **details**. Custom details object.
+* **argsList**. Custom arguments array-like table.
+* **argsDict**. Custom arguments object-like table.
 
 [Back to TOC](#table-of-contents)
 
-unregister(topicURI, callbacks)
+unregister(topicURI[, callbacks])
 ------------------------------------------
 
-RPC unregistration for invocation.
+RPC unregistration for invocations.
 
 Parameters:
 
 * topicURI - topic to unregister
-* callbacks - if it is a function, it will be called on successful unregistration or it can be hash table of callbacks:
+* callbacks - optional parameter. If it is a function, it will be called on successful unregistration 
+            or it can be hash table of callbacks:
 
-        { onSuccess: will be called on successful unregistration
-          onError: will be called if unregistration would be aborted }
+    { 
+        onSuccess: will be called on successful unregistration
+        onError: will be called if unregistration would be aborted 
+    }
 
 [Back to TOC](#table-of-contents)
 
@@ -308,8 +387,14 @@ SOFTWARE.
 See Also
 ========
 
-* [WAMP specification](http://wamp.ws)
-* [Wampy.js](https://github.com/KSDaemon/wampy.js). WAMP Javascript client-side implementation.
-* [Wiola](https://github.com/KSDaemon/wiola). WAMP router powered by LUA Nginx module, Lua WebSocket addon, and Redis as cache store.
+* [WAMP specification][]
+* [Wampy.js][]. WAMP Javascript client-side implementation.
+* [Wiola][]. WAMP router powered by LUA Nginx module, Lua WebSocket addon, and Redis as cache store.
 
 [Back to TOC](#table-of-contents)
+
+[WAMP]: http://wamp-proto.org/
+[WAMP specification]: http://wamp-proto.org/
+[Wiola]: http://ksdaemon.github.io/wiola/
+[Wampy.js]: https://github.com/KSDaemon/wampy.js
+[WAMP Spec CRA]: https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-13.7.2.3
