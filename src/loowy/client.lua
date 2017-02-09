@@ -270,12 +270,12 @@ function _M.new(url, opts)
     -- Internal logging
     ---------------------------------------------------
     local function _log(...)
+        local arg={...}
         if options.debug == true then
             local printResult = ''
             for i, v in ipairs(arg) do
                 printResult = printResult .. tostring(v) .. "\t"
             end
-            printResult = printResult .. "\n"
             print(printResult)
         end
     end
@@ -891,7 +891,7 @@ function _M.new(url, opts)
         _log('websocket OnError event fired')
 
         if type(options.onError) == 'function' then
-            options.onError(options.onError, error)
+            options.onError(error)
         end
     end
 
