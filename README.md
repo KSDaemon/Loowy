@@ -82,7 +82,7 @@ Loowy depends on:
 
 * [lua-websockets](https://github.com/lipp/lua-websockets)
 * [lua-ev](https://github.com/brimworks/lua-ev)
-* [luajson](https://github.com/harningt/luajson)
+* [rapidjson](https://github.com/xpol/lua-rapidjson)
 * [lua-messagepack](http://fperrad.github.io/lua-MessagePack/)
 
 also it uses [busted](http://olivinelabs.com/busted/) for testing.
