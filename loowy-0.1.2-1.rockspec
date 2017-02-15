@@ -19,7 +19,7 @@ dependencies = {
     "luasocket",
     "lua-websockets",
     "lua-ev",
-    "luajson",
+    "rapidjson >= 0.5",
     "lua-messagepack",
     "busted"
 }
