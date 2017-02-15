@@ -36,6 +36,7 @@ print('Connecting client to WAMP Server: ' ..  wsServer)
 client1 = loowy.new(wsServer, { transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
+    debug = true,
     onConnect = function()
         print 'Got to WAMP Client instance onConnect callback'
 
