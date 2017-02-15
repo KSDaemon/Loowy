@@ -216,6 +216,7 @@ Parameters:
                       (Error|uri|string, Details|object)
         onEvent: published event callback to remove 
     }
+
 or it can be not specified, in this case all callbacks and subscription will be removed.
 
 [Back to TOC](#table-of-contents)
@@ -328,13 +329,34 @@ Parameters:
         onError: will be called if registration would be aborted 
     }
 
+Registered PRC during invocation will receive three arguments: array payload (may be undefined), object payload 
+(may be undefined) and options object. One attribute of interest in options is "receive_progress" (boolean), 
+which indicates, that caller is willing to receive progressive results, if possible. RPC can return no result 
+(undefined), or it must return an array with 1, 2 or 3 elements:
+
+* \[0\] element must contain options object or {} if not needed. Possible attribute of options is "progress": true, which
+indicates, that it's a progressive result, so there will be more results in future. Be sure to unset "progress"
+on last result message.
+* \[1\] element can contain array-like table result or single value (that will be converted to array with one element)
+* \[2\] element can contain object-like table result
+
 Also it is possible to abort rpc processing and throw error with custom application specific data. 
 This data will be passed to caller onError callback. 
+
 Exception object with custom data may have next attributes:
-* **uri**. String with custom error uri.
-* **details**. Custom details object.
-* **argsList**. Custom arguments array-like table.
-* **argsDict**. Custom arguments object-like table.
+* **uri**. String with custom error uri. Must meet a WAMP Spec URI requirements.
+* **details**. Custom details dictionary object. The details object is used for the future extensibility, 
+and used by the WAMP router. This object not passed to the client. For details see 
+[WAMP specification 6.1](https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-6.1)
+* **argsList**. Custom arguments array-like table, this will be forwarded to the caller by the WAMP router's dealer 
+role. Most cases this attribute is used to pass the human readable message to the client.
+* **argsDict**. Custom arguments object-like table, this will be forwarded to the caller by the WAMP router's 
+dealer role.
+
+For more details see [WAMP specification 9.2.5](https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-9.2.5).
+
+**Note:** Any other type of errors and exceptions are catched by Loowy and sent back to the client's side, 
+not just this type of custom errors. In this case the details of the error can be lost.
 
 [Back to TOC](#table-of-contents)
 
