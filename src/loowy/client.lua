@@ -285,13 +285,13 @@ function _M.new(url, opts)
     ---------------------------------------------------
     local function _getReqId()
         local reqId
+        local max = 2^53
 
         math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, need to use posix
 
-        reqId = math.random(100000000000000)
+        reqId = math.random(max)
         while (requests[reqId] ~= nil) do
-            -- regId = math.random(9007199254740992)    -- returns numbers in scientific format after encoding :(
-            reqId = math.random(100000000000000)
+            reqId = math.random(max)
         end
 
         return reqId
@@ -410,7 +410,7 @@ function _M.new(url, opts)
             local mp = require 'MessagePack'
             dataObj = mp.pack(msg)
         else        -- json
-            local json = require "json"
+            local json = require "rapidjson"
             dataObj = json.encode(msg)
         end
 
@@ -430,8 +430,8 @@ function _M.new(url, opts)
             local mp = require 'MessagePack'
             dataObj = mp.unpack(msg)
         else        -- json
-            local cjson = require "json"
-            dataObj = cjson.decode(msg)
+            local json = require "rapidjson"
+            dataObj = json.decode(msg)
         end
 
         return dataObj
@@ -830,7 +830,7 @@ function _M.new(url, opts)
 
                         if type(result[3]) == 'table' then
                             if #msg == 3 then
-                                table.insert(msg, nil)
+                                table.insert(msg, {})
                             end
                             table.insert(msg, result[3])
                         end
@@ -857,7 +857,7 @@ function _M.new(url, opts)
 
                         if result.argsDict then
                             if #msg == 5 then
-                                table.insert(msg, nil)
+                                table.insert(msg, {})
                             end
                             table.insert(msg, result.argsDict)
                         end
@@ -1295,7 +1295,7 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __is_luajson_array = true }), payload }
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __jsontype = 'object' }), payload }
         else    -- assume it's a single value
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
         end
@@ -1390,7 +1390,7 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __is_luajson_array = true }), payload }
+            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __jsontype = 'object' }), payload }
         else -- assume it's a single value
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
         end
