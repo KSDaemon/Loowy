@@ -909,7 +909,9 @@ function _M.new(url, opts)
             _wsOnMessage(msg)
         end)
         ws:on_error(function(ws,err)
-            _wsOnError(err)
+            if err ~= 'closed' then
+                _wsOnError(err)
+            end
         end)
     end
 
