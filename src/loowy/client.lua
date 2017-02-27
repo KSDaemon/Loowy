@@ -830,7 +830,7 @@ function _M.new(url, opts)
 
                         if type(result[3]) == 'table' then
                             if #msg == 3 then
-                                table.insert(msg, {})
+                                table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
                             table.insert(msg, result[3])
                         end
@@ -851,13 +851,15 @@ function _M.new(url, opts)
                             msg[5] = result.uri
                         end
 
-                        if result.argsList then
+                        if type(result.argsList) == 'table' and result.argsList[1] ~= nil then
                             table.insert(msg, result.argsList)
+                        elseif result.argsList ~= nil then
+                            table.insert(msg, { result.argsList })
                         end
 
                         if result.argsDict then
                             if #msg == 5 then
-                                table.insert(msg, {})
+                                table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
                             table.insert(msg, result.argsDict)
                         end
@@ -1297,7 +1299,7 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __jsontype = 'object' }), payload }
+            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __jsontype = 'array' }), payload }
         else    -- assume it's a single value
             msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
         end
@@ -1392,12 +1394,11 @@ function _M.new(url, opts)
         elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
         elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __jsontype = 'object' }), payload }
+            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __jsontype = 'array' }), payload }
         else -- assume it's a single value
             msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
         end
 
-        var_dump(msg)
         _send(msg)
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
         cache.opStatus.reqId = reqId;
