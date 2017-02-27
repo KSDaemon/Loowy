@@ -836,7 +836,6 @@ function _M.new(url, opts)
                         end
                     end
                 else
-
                     -- WAMP SPEC: [ERROR, INVOCATION, INVOCATION.Request|id, Details|dict,
                     --             Error|uri, Arguments|list, ArgumentsKw|dict]
                     msg = { WAMP_MSG_SPEC.ERROR, WAMP_MSG_SPEC.INVOCATION, data[2],
