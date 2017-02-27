@@ -830,7 +830,7 @@ function _M.new(url, opts)
 
                         if type(result[3]) == 'table' then
                             if #msg == 3 then
-                                table.insert(msg, setmetatable({},{__jsontype = 'array'}))
+                                table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
                             table.insert(msg, result[3])
                         end
@@ -851,15 +851,17 @@ function _M.new(url, opts)
                             msg[5] = result.uri
                         end
 
-                        if result.argsList then
-                            table.insert(msg, {result.argsList})
+                        if type(result.argsList) == 'table' and result.argsList[1] ~= nil then
+                            table.insert(msg, result.argsList)
+                        elseif result.argsList ~= nil then
+                            table.insert(msg, { result.argsList })
                         end
 
                         if result.argsDict then
                             if #msg == 5 then
-                                table.insert(msg, {})
+                                table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
-                            table.insert(msg, {result.argsDict})
+                            table.insert(msg, result.argsDict)
                         end
                     end
                 end
