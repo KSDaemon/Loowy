@@ -572,6 +572,8 @@ function _M.new(url, opts)
 
         data = _decode(event);
 
+        _log('WAMP message type is ' .. data[1])
+
         if data[1] == WAMP_MSG_SPEC.WELCOME then
             -- WAMP SPEC: [WELCOME, Session|id, Details|dict]
 
@@ -813,6 +815,8 @@ function _M.new(url, opts)
                 local msg
                 local status, result = pcall(rpcRegs[data[3]].callbacks[1], data[5], data[6], data[4])
 
+                _log('RPC invocation status: ' .. status .. ', result: ' .. result)
+
                 if status then
 
                     msg =  { WAMP_MSG_SPEC.YIELD, data[2], {} }
@@ -890,7 +894,7 @@ function _M.new(url, opts)
     -- error - received error
     ---------------------------------------------------
     local function _wsOnError(error)
-        _log('websocket OnError event fired')
+        _log('websocket OnError event fired with error: ' .. error)
 
         if type(options.onError) == 'function' then
             options.onError(error)
