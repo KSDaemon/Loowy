@@ -267,6 +267,56 @@ function _M.new(url, opts)
     local _wsReconnect
 
     ---------------------------------------------------
+    -- Recursive var dumping.
+    --
+    -- Is used by internal logging
+    --
+    -- value - any value to dump
+    -- depth - current depth (in case of recursive dumping)
+    -- key - current key name (in case of recursive dumping)
+    -- @return string
+    ---------------------------------------------------
+    local function var_dump(value, depth, key)
+        local linePrefix = ''
+        local spaces = ''
+        local result = ''
+        local mTable
+
+        if key ~= nil then
+            linePrefix = '[' .. key .. '] = '
+        end
+
+        if depth == nil then
+            depth = 0
+        else
+            depth = depth + 1
+            for i = 1, depth do spaces = spaces .. '   ' end
+        end
+
+        if type(value) == 'table' then
+            mTable = getmetatable(value)
+            if mTable == nil then
+                result = result .. spaces .. linePrefix .. '(table) '
+            else
+                result = result .. spaces .. '(metatable) '
+                value = mTable
+            end
+            for tableKey, tableValue in pairs(value) do
+                var_dump(tableValue, depth, tableKey)
+            end
+        elseif type(value) == 'function' or type(value) == 'thread' or type(value) == 'userdata' or value == nil then
+            result = result .. spaces .. tostring(value)
+        elseif type(value) == 'string' then
+            result = result .. spaces .. linePrefix .. '(' .. type(value) .. ') "' .. tostring(value) .. '"'
+        else
+            result = result .. spaces .. linePrefix .. '(' .. type(value) .. ') ' .. tostring(value)
+        end
+
+        return result
+    end
+
+
+    ---------------------------------------------------
     -- Internal logging
     ---------------------------------------------------
     local function _log(...)
@@ -274,7 +324,7 @@ function _M.new(url, opts)
         if options.debug == true then
             local printResult = ''
             for i, v in ipairs(arg) do
-                printResult = printResult .. tostring(v) .. "\t"
+                printResult = printResult .. '[DEBUG] ' .. var_dump(v) .. '\n'
             end
             print(printResult)
         end
@@ -449,7 +499,7 @@ function _M.new(url, opts)
 
         if ws ~= nil and ws.state == 'OPEN' and cache.sessionId ~= nil then
             while #wsQueue > 0 do
-                _log('Sending message to server', 'Payload: ' .. wsQueue[1])
+                _log('Sending message to server', 'Payload: ', wsQueue[1])
                 ws:send(table.remove(wsQueue, 1), options.transportType)
             end
         end
@@ -815,7 +865,7 @@ function _M.new(url, opts)
                 local msg
                 local status, result = pcall(rpcRegs[data[3]].callbacks[1], data[5], data[6], data[4])
 
-                _log('RPC invocation status: ' .. status .. ', result: ' .. result)
+                _log('RPC invocation status: ', status, ', result: ', result)
 
                 if status then
 
