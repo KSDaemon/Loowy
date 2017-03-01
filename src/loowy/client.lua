@@ -827,7 +827,7 @@ function _M.new(url, opts)
 
                         msg[3] = result[1]  -- Options
 
-                        if type(result[2]) == 'table' and result[2][1] ~= nil then
+                        if type(result[2]) == 'table' and (result[2][1] ~= nil or #result[2] == 0) then
                             table.insert(msg, result[2])
                         elseif result[2] ~= nil then
                             table.insert(msg, { result[2] })
@@ -856,7 +856,7 @@ function _M.new(url, opts)
                             msg[5] = result.uri
                         end
 
-                        if type(result.argsList) == 'table' and result.argsList[1] ~= nil then
+                        if type(result.argsList) == 'table' and (result.argsList[1] ~= nil or #result[2] == 0)  then
                             table.insert(msg, result.argsList)
                         elseif result.argsList ~= nil then
                             table.insert(msg, { result.argsList })
