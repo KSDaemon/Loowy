@@ -334,11 +334,11 @@ Registered PRC during invocation will receive three arguments: array payload (ma
 which indicates, that caller is willing to receive progressive results, if possible. RPC can return no result 
 (undefined), or it must return an array with 1, 2 or 3 elements:
 
-* \[0\] element must contain options object or {} if not needed. Possible attribute of options is "progress": true, which
+* \[1\] element must contain options object or {} if not needed. Possible attribute of options is "progress": true, which
 indicates, that it's a progressive result, so there will be more results in future. Be sure to unset "progress"
 on last result message.
-* \[1\] element can contain array-like table result or single value (that will be converted to array with one element)
-* \[2\] element can contain object-like table result
+* \[2\] element can contain array-like table result or single value (that will be converted to array with one element)
+* \[3\] element can contain object-like table result
 
 Also it is possible to abort rpc processing and throw error with custom application specific data. 
 This data will be passed to caller onError callback. 
