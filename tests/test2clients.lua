@@ -24,7 +24,7 @@ for line in io.lines('config.ini') do
     end
 end
 
-local printdump = require("debug.vardump").printdump
+local printdump = require("loowy.vardump").printdump
 local ev = require 'ev'
 local loowy = require 'loowy.client'
 

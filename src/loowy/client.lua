@@ -13,7 +13,7 @@
 --require "debug.var_dump"
 
 local _M = {
-    _VERSION = '0.1.2'
+    _VERSION = '0.2.0'
 }
 
 -- _M.__index = _M -- I think no needed
@@ -271,7 +271,7 @@ function _M.new(url, opts)
     ---------------------------------------------------
     local function _log(...)
         local args={... }
-        local getdump = require("debug.vardump").getdump
+        local getdump = require("loowy.vardump").getdump
         if options.debug == true then
             local printResult = ''
             for i, v in ipairs(args) do
