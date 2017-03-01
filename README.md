@@ -73,6 +73,11 @@ You can install Loowy via luarocks
 or simply put loowy/client.lua somewhere accessible by lua package.path. 
 But in this case you also need to install dependencies.
 
+**WARNING!** 
+Loowy depends on [lua-websockets][]. But lua-websockets up to and including v2.2 doesn't contain necessary changes.
+Please manually install lua-websockets from master branch and send message to 
+[lua-websockets maintainer](https://github.com/lipp) to publish new release :)
+
 [Back to TOC](#table-of-contents)
 
 Dependencies
@@ -420,3 +425,4 @@ See Also
 [Wiola]: http://ksdaemon.github.io/wiola/
 [Wampy.js]: https://github.com/KSDaemon/wampy.js
 [WAMP Spec CRA]: https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-13.7.2.3
+[lua-websockets]: https://github.com/lipp/lua-websockets
