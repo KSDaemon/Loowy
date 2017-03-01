@@ -24,7 +24,7 @@ for line in io.lines('config.ini') do
     end
 end
 
-require "debug.var_dump"
+local printdump = require("debug.vardump").printdump
 local ev = require 'ev'
 local loowy = require 'loowy.client'
 
@@ -51,7 +51,7 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onEvent = function(evt)
                 print 'Got to topic topic.test1 instance 1 subscribe onEvent'
                 print ('Event payload: ')
-                var_dump(evt)
+                printdump(evt)
             end
         })
 
@@ -90,7 +90,7 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             rpc = function (data)
                 print ('Invoked rpc.test1 instance 1')
                 print ('RPC payload')
-                var_dump(data)
+                printdump(data)
                 return data
             end,
             onSuccess = function()
@@ -109,7 +109,7 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
                 onSuccess = function(data)
                     print 'Got to rpc call rpc.test2 onSuccess'
                     print 'Call result'
-                    var_dump(data)
+                    printdump(data)
                 end,
                 onError = function(err)
                     print ('Got to rpc call rpc.test2 instance 1 onError: ' .. err)
@@ -158,7 +158,7 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
             onEvent = function(evt)
                 print 'Got to topic topic.test1 instance 2 subscribe onEvent'
                 print ('Event payload: ')
-                var_dump(evt)
+                printdump(evt)
             end
         })
 
@@ -197,7 +197,7 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
             rpc = function (data)
                 print ('Invoked rpc.test2 instance 2')
                 print ('RPC payload')
-                var_dump(data)
+                printdump(data)
                 return data
             end,
             onSuccess = function()
@@ -216,7 +216,7 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
                 onSuccess = function(data)
                     print 'Got to rpc call rpc.test1 onSuccess'
                     print 'Call result'
-                    var_dump(data)
+                    printdump(data)
                 end,
                 onError = function(err)
                     print ('Got to rpc call rpc.test1 instance 2 onError: ' .. err)
@@ -239,7 +239,7 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
         print 'Got to WAMP Client instance 2 onClose callback'
     end,
     onError = function(err1)
-        var_dump(err1)
+        printdump(err1)
         print ('Got to WAMP Client instance 2 onError callback: ' .. err1)
     end,
     onReconnect = function()

@@ -24,7 +24,7 @@ for line in io.lines('config.ini') do
     end
 end
 
-require "debug.var_dump"
+local printdump = require("debug.vardump").printdump
 local ev = require 'ev'
 local loowy = require 'loowy.client'
 local client1
@@ -49,7 +49,7 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
             onEvent = function(evt)
                 print 'Got to topic topic.test1 subscribe onEvent'
                 print ('Event payload: ')
-                var_dump(evt)
+                printdump(evt)
             end
         })
 
