@@ -267,64 +267,15 @@ function _M.new(url, opts)
     local _wsReconnect
 
     ---------------------------------------------------
-    -- Recursive var dumping.
-    --
-    -- Is used by internal logging
-    --
-    -- value - any value to dump
-    -- depth - current depth (in case of recursive dumping)
-    -- key - current key name (in case of recursive dumping)
-    -- @return string
-    ---------------------------------------------------
-    local function var_dump(value, depth, key)
-        local linePrefix = ''
-        local spaces = ''
-        local result = ''
-        local mTable
-
-        if key ~= nil then
-            linePrefix = '[' .. key .. '] = '
-        end
-
-        if depth == nil then
-            depth = 0
-        else
-            depth = depth + 1
-            for i = 1, depth do spaces = spaces .. '   ' end
-        end
-
-        if type(value) == 'table' then
-            mTable = getmetatable(value)
-            if mTable == nil then
-                result = result .. spaces .. linePrefix .. '(table) '
-            else
-                result = result .. spaces .. '(metatable) '
-                value = mTable
-            end
-            for tableKey, tableValue in pairs(value) do
-                var_dump(tableValue, depth, tableKey)
-            end
-        elseif type(value) == 'function' or type(value) == 'thread' or type(value) == 'userdata' or value == nil then
-            result = result .. spaces .. tostring(value)
-        elseif type(value) == 'string' then
-            result = result .. spaces .. linePrefix .. '(' .. type(value) .. ') "' .. tostring(value) .. '"'
-        else
-            result = result .. spaces .. linePrefix .. '(' .. type(value) .. ') ' .. tostring(value)
-        end
-
-        return result
-    end
-
-
-    ---------------------------------------------------
     -- Internal logging
     ---------------------------------------------------
     local function _log(...)
-        local arg={...}
+        local args={... }
+        local getdump = require("debug.vardump").getdump
         if options.debug == true then
             local printResult = ''
-            for i, v in ipairs(arg) do
-                printResult = printResult .. '[DEBUG] ' .. var_dump(v) .. '\n'
+            for i, v in ipairs(args) do
+                printResult = printResult .. '[DEBUG] ' .. getdump(v) .. '\n'
             end
             print(printResult)
         end
@@ -618,10 +569,10 @@ function _M.new(url, opts)
         local data, id, i, d, result, msg;
 
         _log('websocket OnMessage event fired')
-        _log('Message received: ' .. event)
 
         data = _decode(event);
 
+        _log('Message received:', data)
         _log('WAMP message type is ' .. data[1])
 
         if data[1] == WAMP_MSG_SPEC.WELCOME then
@@ -865,7 +816,7 @@ function _M.new(url, opts)
                 local msg
                 local status, result = pcall(rpcRegs[data[3]].callbacks[1], data[5], data[6], data[4])
 
-                _log('RPC invocation status: ', status, ', result: ', result)
+                _log('RPC invocation status: ', status, 'result: ', result)
 
                 if status then
 
