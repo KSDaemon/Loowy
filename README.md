@@ -85,12 +85,12 @@ Dependencies
 
 Loowy depends on:
 
-* [lua-websockets](https://github.com/lipp/lua-websockets)
-* [lua-ev](https://github.com/brimworks/lua-ev)
-* [rapidjson](https://github.com/xpol/lua-rapidjson)
-* [lua-messagepack](http://fperrad.github.io/lua-MessagePack/)
+* [lua-websockets][]
+* [lua-ev][]
+* [rapidjson][]
+* [lua-messagepack][]
 
-also it uses [busted](http://olivinelabs.com/busted/) for testing.
+also it uses [busted][] for testing.
 
 [Back to TOC](#table-of-contents)
 
@@ -426,3 +426,7 @@ See Also
 [Wampy.js]: https://github.com/KSDaemon/wampy.js
 [WAMP Spec CRA]: https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-13.7.2.3
 [lua-websockets]: https://github.com/lipp/lua-websockets
+[lua-ev]: https://github.com/brimworks/lua-ev
+[rapidjson]: https://github.com/xpol/lua-rapidjson
+[lua-messagepack]: http://fperrad.github.io/lua-MessagePack/
+[busted]: http://olivinelabs.com/busted/
