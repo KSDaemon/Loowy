@@ -28,7 +28,7 @@ build = {
     type = 'none',
     install = {
         lua = {
-            ['loowy.client'] = 'src/loowy/client.lua'
+            ['loowy.client'] = 'src/loowy/client.lua',
             ['loowy.vardump'] = 'src/debug/vardump.lua'
 
         }
