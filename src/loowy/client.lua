@@ -132,6 +132,10 @@ function _M.new(url, opts)
         -- @type string
         sessionId = nil,
 
+        -- Session scope requests ID
+        -- @type int
+        reqId = 0,
+
         -- Server WAMP roles and features
         serverWampFeatures = {
             roles = {}
@@ -285,17 +289,8 @@ function _M.new(url, opts)
     -- Get the new unique request id
     ---------------------------------------------------
     local function _getReqId()
-        local reqId
-        local max = 2^53
-
-        math.randomseed(os.time()) -- TODO  Precision - only seconds, which is not acceptable, need to use posix
-
-        reqId = math.random(max)
-        while (requests[reqId] ~= nil) do
-            reqId = math.random(max)
-        end
-
-        return reqId
+        cache.reqId = cache.reqId + 1
+        return cache.reqId
     end
 
     ---------------------------------------------------
@@ -470,6 +465,7 @@ function _M.new(url, opts)
 
         cache.protocols = { 'wamp.2.json' }
         cache.sessionId = nil
+        cache.reqId = 0
         cache.serverWampFeatures = {
             roles = {}
         }
