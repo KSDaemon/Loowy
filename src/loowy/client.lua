@@ -1563,7 +1563,9 @@ function _M.new(url, opts)
         _setWsProtocols()
     end
 
-    loowy:connect(url)
+    if url ~= nil then
+        loowy:connect(url)
+    end
 
     return loowy
 end
