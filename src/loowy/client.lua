@@ -13,7 +13,7 @@
 --require "debug.var_dump"
 
 local _M = {
-    _VERSION = '0.2.0'
+    _VERSION = '0.2.1'
 }
 
 -- _M.__index = _M -- I think no needed
