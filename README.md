@@ -1,7 +1,7 @@
 Loowy
 =====
 
-LUA WAMP (WebSocket Application Messaging Protocol) client implementation on top of lua-websockets and lib-ev. 
+Lua WAMP (WebSocket Application Messaging Protocol) client implementation on top of lua-websockets and lib-ev. 
 
 Table of Contents
 =================
