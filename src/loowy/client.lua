@@ -310,8 +310,8 @@ function _M.new(url, opts)
     ---------------------------------------------------
     local function _validateURI(uri)
 
-        -- TODO create something like /^([0-9a-z_]{2,}\.)*([0-9a-z_]{2,})$/
-        if string.find(uri, "^[0-9a-zA-Z_.]+$") == nil or string.find(uri, "wamp") == 1 then
+        -- TODO create something like /^([0-9a-z_]+\.)*([0-9a-z_]+)$/
+        if string.find(uri, "^[0-9a-zA-Z_.]*[0-9a-zA-Z_]+$") == nil or string.find(uri, "wamp") == 1 then
             return false
         else
             return true
