@@ -10,7 +10,7 @@
 -- Date: 20.11.14
 --
 
---require "debug.var_dump"
+--local printdump = require("loowy.vardump").printdump
 
 local _M = {
     _VERSION = '0.2.1'
@@ -126,7 +126,7 @@ function _M.new(url, opts)
 
         -- WS supported protocols
         -- @type array of strings
-        protocols = { 'wamp.2.json' },
+        protocols = { 'wamp.2.json', 'wamp.2.msgpack' },
 
         -- WAMP Session ID
         -- @type string
@@ -162,6 +162,9 @@ function _M.new(url, opts)
 
     -- WebSocket object
     local ws
+
+    -- Serializer instance to use for message encoding
+    local serializer
 
     -- Internal queue for websocket requests, for case of disconnect
     -- @type array
@@ -257,7 +260,6 @@ function _M.new(url, opts)
         -- onReconnectSuccess callback
         -- @type function
         onReconnectSuccess = nil
-
     }
 
     ---------------------------------------------------
@@ -286,6 +288,50 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
+    -- Return index of obj in array t
+    --
+    -- t - array table
+    -- obj - object to search
+    -- @return index of obj or -1 if not found
+    ---------------------------------------------------
+    local function _arrayIndexOf(t, obj)
+        if type(t) == 'table' then
+            for i = 1, #t do
+                if t[i] == obj then
+                    return i
+                end
+            end
+
+            return -1
+        else
+            error("table.indexOf expects table for first argument, " .. type(t) .. " given")
+        end
+    end
+
+    ---------------------------------------------------
+    -- Merge two tables
+    --
+    -- dest - Destination table
+    -- source - Source table
+    -- @return merged table
+    ---------------------------------------------------
+    local function _tableMerge(dest, source)
+        if type(source) == "table" then
+            for k, v in pairs(source) do
+                if (type(v) == "table" and type(dest[k]) == "table") then
+                    -- don't overwrite one table with another
+                    -- instead merge them recurisvely
+                    _tableMerge(dest[k], v)
+                else
+                    dest[k] = v
+                end
+            end
+        end
+
+        return dest
+    end
+
+    ---------------------------------------------------
     -- Get the new unique request id
     ---------------------------------------------------
     local function _getReqId()
@@ -297,8 +343,12 @@ function _M.new(url, opts)
     -- Set websocket protocols based on options
     ---------------------------------------------------
     local function _setWsProtocols()
-        if options.transportEncoding == 'msgpack' then
-            table.insert(cache.protocols, 1, 'wamp.2.msgpack')
+        local te = 'wamp.2.' .. options.transportEncoding
+        local idx = _arrayIndexOf(cache.protocols, te)
+
+        if idx > 1 then
+            table.remove(cache.protocols, idx)
+            table.insert(cache.protocols, 1, te)
         end
     end
 
@@ -350,67 +400,13 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Return index of obj in array t
-    --
-    -- t - array table
-    -- obj - object to search
-    -- @return index of obj or -1 if not found
-    ---------------------------------------------------
-    local function _arrayIndexOf(t, obj)
-        if type(t) == 'table' then
-            for i = 1, #t do
-                if t[i] == obj then
-                    return i
-                end
-            end
-
-            return -1
-        else
-            error("table.indexOf expects table for first argument, " .. type(t) .. " given")
-        end
-    end
-
-    ---------------------------------------------------
-    -- Merge two tables
-    --
-    -- dest - Destination table
-    -- source - Source table
-    -- @return merged table
-    ---------------------------------------------------
-    local function _tableMerge(dest, source)
-        if type(source) == "table" then
-            for k, v in pairs(source) do
-                if (type(v) == "table" and type(dest[k]) == "table") then
-                    -- don't overwrite one table with another
-                    -- instead merge them recurisvely
-                    _tableMerge(dest[k], v)
-                else
-                    dest[k] = v
-                end
-            end
-        end
-
-        return dest
-    end
-
-    ---------------------------------------------------
     -- Encode WAMP message
     --
     -- msg - message to encode
     -- @return encoder specific encoded message
     ---------------------------------------------------
     local function _encode(msg)
-        local dataObj
-
-        if options.transportEncoding == 'msgpack' then
-            local mp = require 'MessagePack'
-            dataObj = mp.pack(msg)
-        else        -- json
-            local json = require "rapidjson"
-            dataObj = json.encode(msg)
-        end
-
-        return dataObj
+        return serializer.encode(msg)
     end
 
     ---------------------------------------------------
@@ -420,17 +416,7 @@ function _M.new(url, opts)
     -- @return encoder specific decoded message
     ---------------------------------------------------
     local function _decode(msg)
-        local dataObj
-
-        if options.transportEncoding == 'msgpack' then
-            local mp = require 'MessagePack'
-            dataObj = mp.unpack(msg)
-        else        -- json
-            local json = require "rapidjson"
-            dataObj = json.decode(msg)
-        end
-
-        return dataObj
+        return serializer.decode(msg)
     end
 
     ---------------------------------------------------
@@ -499,8 +485,10 @@ function _M.new(url, opts)
         local ws_meta = require('websocket')
         if options.transportEncoding == 'json' then
             options.transportType = ws_meta.TEXT
+            serializer = require('loowy.json_serializer')
         else --if options.transportEncoding == 'msgpack' then
             options.transportType = ws_meta.BINARY
+            serializer = require('loowy.msgpack_serializer')
         end
 
         ws:send(_encode({ WAMP_MSG_SPEC.HELLO, options.realm, runtimeOptions }), options.transportType)
@@ -521,6 +509,7 @@ function _M.new(url, opts)
         else
             _resetState()
             ws = nil
+            serializer = nil
 
             if type(options.onClose) == 'function' then
                 options.onClose()
@@ -1029,6 +1018,7 @@ function _M.new(url, opts)
         elseif ws ~= nil then
             ws:close()
             ws = nil
+            serializer = nil
         end
 
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
@@ -1045,6 +1035,7 @@ function _M.new(url, opts)
 
         ws:close()
         ws = nil
+        serializer = nil
 
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
     end
