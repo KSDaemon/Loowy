@@ -48,6 +48,7 @@ Loowy supports next WAMP roles and features:
     * call timeout
 * callee:
     * caller identification
+    * call trustlevels
 
 Loowy supports JSON and msgpack serializers.
 
@@ -336,7 +337,8 @@ Parameters:
 
 Registered PRC during invocation will receive three arguments: array payload (may be undefined), object payload 
 (may be undefined) and options object. One attribute of interest in options is "receive_progress" (boolean), 
-which indicates, that caller is willing to receive progressive results, if possible. RPC can return no result 
+which indicates, that caller is willing to receive progressive results, if possible. Another one is "trustlevel", which  
+indicates the call trust level, assigned by dealer (of course if it is configured accordingly). RPC can return no result 
 (undefined), or it must return an array with 1, 2 or 3 elements:
 
 * \[1\] element must contain options object or {} if not needed. Possible attribute of options is "progress": true, which

@@ -43,7 +43,8 @@ local WAMP_FEATURES = {
         },
         callee = {
             features = {
-                caller_identification = true
+                caller_identification = true,
+                call_trustlevels = true
             }
         }
     }

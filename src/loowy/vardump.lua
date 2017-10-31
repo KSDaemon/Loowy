@@ -1,5 +1,5 @@
 --
--- Project: wiola
+-- Project: Loowy
 -- User: Konstantin Burkalev
 -- Date: 16.03.14
 --
