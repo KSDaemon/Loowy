@@ -36,12 +36,13 @@ Loowy implements [WAMP][] v2 client specification.
 Loowy supports next WAMP roles and features:
 
 * Challenge Response Authentication (wampcra method)
-* publisher: advanced profile with features:
+* publisher:
     * subscriber blackwhite listing
     * publisher exclusion
     * publisher identification
-* subscriber: basic profile
-* caller: advanced profile with features:
+* subscriber:
+    * publication trustlevels
+* caller:
     * caller identification
     * progressive call results
     * call canceling
@@ -200,8 +201,8 @@ or it can be hash table of callbacks:
         onSuccess: will be called when subscription would be confirmed
         onError:   will be called if subscription would be aborted with 2-4 parameters:
                 (Error|uri|string, Details|object[, Arguments|list, ArgumentsKw|dict])
-        onEvent:   will be called on receiving published event with 2 parameters: 
-                (Arguments|array, ArgumentsKw|object) 
+        onEvent:   will be called on receiving published event with 3 parameters: 
+                (Arguments|array, ArgumentsKw|object, Details|object) 
     }
 
 [Back to TOC](#table-of-contents)

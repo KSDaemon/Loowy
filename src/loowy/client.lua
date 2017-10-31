@@ -32,7 +32,11 @@ local WAMP_FEATURES = {
                 publisher_identification = true
             }
         },
-        subscriber = {},
+        subscriber = {
+            features = {
+                publication_trustlevels = true
+            }
+        },
         caller = {
             features = {
                 caller_identification = true,
@@ -722,7 +726,7 @@ function _M.new(url, opts)
             if subscriptions[data[2]] then
 
                 for k, callback in ipairs(subscriptions[data[2]].callbacks) do
-                    callback(data[5], data[6])
+                    callback(data[5], data[6], data[4])
                 end
 
             else
