@@ -29,26 +29,27 @@ local ev = require 'ev'
 local loowy = require 'loowy.client'
 local client1
 
-print('Connecting client to WAMP Server: ' ..  wsServer)
-client1 = loowy.new(wsServer, { transportEncoding = 'json',
+print('Connecting client to WAMP Server: ' .. wsServer)
+client1 = loowy.new(wsServer, {
+    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
     debug = config.debug,
     onConnect = function()
-        print 'Got to WAMP Client instance onConnect callback'
+        print('Got to WAMP Client instance onConnect callback')
 
-        print ('Subscribing to topic.test1')
+        print('Subscribing to topic.test1')
         client1:subscribe('topic.test1', {
             onSuccess = function()
-                print 'Got to topic topic.test1 subscribe onSuccess'
+                print('Got to topic topic.test1 subscribe onSuccess')
             end,
             onError = function(err)
-                print ('Got to topic topic.test1 subscribe onError: ' .. err)
+                print('Got to topic topic.test1 subscribe onError: ' .. err.error)
             end,
             onEvent = function(evt)
-                print 'Got to topic topic.test1 subscribe onEvent'
-                print ('Event payload: ')
+                print('Got to topic topic.test1 subscribe onEvent')
+                print('Event payload: ')
                 printdump(evt)
             end
         })
@@ -56,29 +57,28 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
         local unsubscribeTimer
         unsubscribeTimer = ev.Timer.new(function()
             unsubscribeTimer:stop(ev.Loop.default)
-            print ('Unsubscribing from topic.test1')
+            print('Unsubscribing from topic.test1')
             client1:unsubscribe('topic.test1', {
                 onSuccess = function()
-                    print 'Got to unsubscribe from topic topic.test1 onSuccess'
-                    print ('Disconnecting from WAMP Server')
+                    print('Got to unsubscribe from topic topic.test1 onSuccess')
+                    print('Disconnecting from WAMP Server')
                     client1:disconnect()
                 end,
                 onError = function(err)
-                    print ('Got to unsubscribe from topic topic.test1 onError: ' .. err)
+                    print('Got to unsubscribe from topic topic.test1 onError: ' .. err.error)
                 end
             })
         end, 5)
         unsubscribeTimer:start(ev.Loop.default)
-
     end,
     onClose = function()
-        print 'Got to WAMP Client instance onClose callback'
+        print('Got to WAMP Client instance onClose callback')
     end,
     onError = function(err)
-        print ('Got to WAMP Client instance onError callback: ' .. err)
+        print('Got to WAMP Client instance onError callback: ' .. err.error)
     end,
     onReconnect = function()
-        print 'Got to WAMP Client instance onReconnect callback'
+        print('Got to WAMP Client instance onReconnect callback')
     end
 })
 

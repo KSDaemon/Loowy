@@ -31,248 +31,217 @@ local loowy = require 'loowy.client'
 local client1
 local firstDisconnect = true
 
-print('Connecting client to WAMP Server: ' ..  wsServer)
+print('Connecting client to WAMP Server: ' .. wsServer)
 
-client1 = loowy.new(wsServer, { transportEncoding = 'json',
+client1 = loowy.new(wsServer, {
+    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
     debug = config.debug,
     onConnect = function()
-        print 'Got to WAMP Client instance onConnect callback'
+        print('Got to WAMP Client instance onConnect callback')
 
-        print ('Subscribing to topic.test1')
+        print('Subscribing to topic.test1')
         client1:subscribe('topic.test1', {
             onSuccess = function()
-                print 'Got to topic topic.test1 subscribe onSuccess'
+                print('Got to topic topic.test1 subscribe onSuccess')
 
-                print ('Adding another subscription to topic.test1')
+                print('Adding another subscription to topic.test1')
                 client1:subscribe('topic.test1', {
                     onSuccess = function()
-                        print 'Got to another topic topic.test1 subscribe onSuccess'
+                        print('Got to another topic topic.test1 subscribe onSuccess')
                     end,
                     onError = function(err)
-                        print ('Got to another topic topic.test1 subscribe onError: ' .. err)
+                        print('Got to another topic topic.test1 subscribe onError: ' .. err.error)
                     end,
                     onEvent = function(evt)
                         print 'Got to another topic topic.test1 subscribe onEvent'
-                        print ('Event payload: ')
+                        print('Event payload: ')
                         printdump(evt)
                     end
                 })
             end,
             onError = function(err)
-                print ('Got to topic topic.test1 subscribe onError: ' .. err)
+                print('Got to topic topic.test1 subscribe onError: ' .. err.error)
             end,
             onEvent = function(evt)
                 print 'Got to topic topic.test1 subscribe onEvent'
-                print ('Event payload: ')
+                print('Event payload: ')
                 printdump(evt)
             end
         })
 
-        print ('Publishing to topic.test1 without payload')
+        print('Publishing to topic.test1 without payload')
         client1:publish('topic.test1', nil, {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
-        print ('Publishing to topic.test1 with payload: string "string payload"')
+        print('Publishing to topic.test1 with payload: string "string payload"')
         client1:publish('topic.test1', "string payload", {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
-        print ('Publishing to topic.test1 with payload: integer 25')
+        print('Publishing to topic.test1 with payload: integer 25')
         client1:publish('topic.test1', 25, {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
-        print ('Publishing to topic.test1 with payload: array { 1, 2, 3, 4, 5 }')
+        print('Publishing to topic.test1 with payload: array { 1, 2, 3, 4, 5 }')
         client1:publish('topic.test1', { 1, 2, 3, 4, 5 }, {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
-        print ('Publishing to topic.test1 with payload: table { key1 = "string", key2 = 100, key3 = true }')
+        print('Publishing to topic.test1 with payload: table { key1 = "string", key2 = 100, key3 = true }')
         client1:publish('topic.test1', { key1 = "string", key2 = 100, key3 = true }, {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
         local unsubscribeTimer
         unsubscribeTimer = ev.Timer.new(function()
             unsubscribeTimer:stop(ev.Loop.default)
-            print ('Unsubscribing from topic.test1')
+            print('Unsubscribing from topic.test1')
             client1:unsubscribe('topic.test1', {
                 onSuccess = function()
-                    print 'Got to unsubscribe from topic topic.test1 onSuccess'
+                    print('Got to unsubscribe from topic topic.test1 onSuccess')
 
-                    print ('Publishing to topic.test1 with string payload and settings: disclose_me = true, exclude_me = false')
-                    print ('We should not receive this event')
+                    print('Publishing to topic.test1 with string payload and settings: disclose_me = true, exclude_me = false')
+                    print('We should not receive this event')
                     client1:publish('topic.test1', "unsubscribed event string", {
                         onSuccess = function()
-                            print 'Got to publish to unsubscribed topic topic.test1 onSuccess'
+                            print('Got to publish to unsubscribed topic topic.test1 onSuccess')
                         end,
                         onError = function(err)
-                            print ('Got to publish to unsubscribed topic topic.test1 onError: ' .. err)
+                            print('Got to publish to unsubscribed topic topic.test1 onError: ' .. err.error)
                         end
                     }, { disclose_me = true, exclude_me = false })
-
                 end,
                 onError = function(err)
-                    print ('Got to unsubscribe from topic topic.test1 onError: ' .. err)
+                    print('Got to unsubscribe from topic topic.test1 onError: ' .. err.error)
                 end
             })
         end, 10)
         unsubscribeTimer:start(ev.Loop.default)
 
-        print ('Registering new RPC rpc.test1')
+        print('Registering new RPC rpc.test1')
         client1:register('rpc.test1', {
-            rpc = function (dataList, dataDict, details)
-                local result = {{}}
-                print ('Invoked rpc.test1')
-                print ('RPC payload')
-                print ('List')
-                printdump(dataList)
-                print ('Dict')
-                printdump(dataDict)
-                print ('Details')
-                printdump(details)
+            rpc = function(data)
+                print('Invoked rpc.test1')
+                print('RPC payload')
+                printdump(data)
 
-                if dataList and #dataList > 0 then
-                    table.insert(result, dataList)
-                end
-
-                if dataDict then
-                    print ('RPC result length: ' .. #result)
-                    printdump(result)
-                    if #result == 1 then
-                        table.insert(result, {})
-                    end
-                    table.insert(result, dataDict)
-                end
-
-                print ('RPC returning result')
-                printdump(result)
-                return result
+                return { argsList = data.argsList, argsDict = data.argsDict }
             end,
             onSuccess = function()
-                print 'Got to register rpc rpc.test1 onSuccess'
+                print('Got to register rpc rpc.test1 onSuccess')
 
-                print 'Calling rpc rpc.test1 without data'
+                print('Calling rpc rpc.test1 without data')
                 client1:call('rpc.test1', nil, {
-                    onSuccess = function(dataList, dataDict)
-                        print 'Got to rpc call rpc.test1 onSuccess'
-                        print 'Call result'
-                        print ('List')
-                        printdump(dataList)
-                        print ('Dict')
-                        printdump(dataDict)
+                    onSuccess = function(data)
+                        print('Got to rpc call rpc.test1 onSuccess')
+                        print('Call result')
+                        printdump(data)
                     end,
                     onError = function(err)
-                        print ('Got to rpc call rpc.test1 onError: ' .. err)
+                        print('Got to rpc call rpc.test1 onError: ' .. err.error)
                     end
-
                 }, { disclose_me = true, exclude_me = false })
 
-                print 'Calling rpc rpc.test1 with payload: string "string payload"'
+                print('Calling rpc rpc.test1 with payload: string "string payload"')
                 client1:call('rpc.test1', "string payload", {
                     onSuccess = function(data)
-                        print 'Got to rpc call rpc.test1 onSuccess'
-                        print 'Call result'
+                        print('Got to rpc call rpc.test1 onSuccess')
+                        print('Call result')
                         printdump(data)
                     end,
                     onError = function(err)
-                        print ('Got to rpc call rpc.test1 onError: ' .. err)
+                        print('Got to rpc call rpc.test1 onError: ' .. err.error)
                     end
-
                 }, { disclose_me = true, exclude_me = false })
 
-                print 'Calling rpc rpc.test1 with payload: integer 25'
+                print('Calling rpc rpc.test1 with payload: integer 25')
                 client1:call('rpc.test1', 25, {
                     onSuccess = function(data)
-                        print 'Got to rpc call rpc.test1 onSuccess'
-                        print 'Call result'
+                        print('Got to rpc call rpc.test1 onSuccess')
+                        print('Call result')
                         printdump(data)
                     end,
                     onError = function(err)
-                        print ('Got to rpc call rpc.test1 onError: ' .. err)
+                        print('Got to rpc call rpc.test1 onError: ' .. err.error)
                     end
-
                 }, { disclose_me = true, exclude_me = false })
 
-                print 'Calling rpc rpc.test1 with payload: array { 1, 2, 3, 4, 5 }'
+                print('Calling rpc rpc.test1 with payload: array { 1, 2, 3, 4, 5 }')
                 client1:call('rpc.test1', { 1, 2, 3, 4, 5 }, {
                     onSuccess = function(data)
-                        print 'Got to rpc call rpc.test1 onSuccess'
-                        print 'Call result'
+                        print('Got to rpc call rpc.test1 onSuccess')
+                        print('Call result')
                         printdump(data)
                     end,
                     onError = function(err)
-                        print ('Got to rpc call rpc.test1 onError: ' .. err)
+                        print('Got to rpc call rpc.test1 onError: ' .. err.error)
                     end
-
                 }, { disclose_me = true, exclude_me = false })
 
-                print 'Calling rpc rpc.test1 with payload: table { key1 = "string", key2 = 100, key3 = true }'
+                print('Calling rpc rpc.test1 with payload: table { key1 = "string", key2 = 100, key3 = true }')
                 client1:call('rpc.test1', { key1 = "string", key2 = 100, key3 = true }, {
                     onSuccess = function(data)
-                        print 'Got to rpc call rpc.test1 onSuccess'
-                        print 'Call result'
+                        print('Got to rpc call rpc.test1 onSuccess')
+                        print('Call result')
                         printdump(data)
                     end,
                     onError = function(err)
-                        print ('Got to rpc call rpc.test1 onError: ' .. err)
+                        print('Got to rpc call rpc.test1 onError: ' .. err.error)
                     end
-
                 }, { disclose_me = true, exclude_me = false })
-
             end,
             onError = function(err)
-                print ('Got to register rpc rpc.test1 onError: ' .. err)
+                print('Got to register rpc rpc.test1 onError: ' .. err.error)
             end
         })
 
         local disconnectTimer
         disconnectTimer = ev.Timer.new(function()
             disconnectTimer:stop(ev.Loop.default)
-            print ('Disconnecting from WAMP Server')
+            print('Disconnecting from WAMP Server')
             client1:disconnect()
         end, 30)
         disconnectTimer:start(ev.Loop.default)
-
     end,
     onClose = function()
-        print 'Got to WAMP Client instance onClose callback'
+        print('Got to WAMP Client instance onClose callback')
         if firstDisconnect then
             client1.connect()
             firstDisconnect = false
         end
     end,
     onError = function(err)
-        print ('Got to WAMP Client instance onError callback: ' .. err)
+        print('Got to WAMP Client instance onError callback: ' .. err.error)
     end,
     onReconnect = function()
         print 'Got to WAMP Client instance onReconnect callback'

@@ -30,27 +30,28 @@ local loowy = require 'loowy.client'
 
 local client1, client2
 
-print('Connecting clients to WAMP Server: ' ..  wsServer)
+print('Connecting clients to WAMP Server: ' .. wsServer)
 
-client1 = loowy.new(wsServer, { transportEncoding = 'json',
+client1 = loowy.new(wsServer, {
+    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
     debug = config.debug,
     onConnect = function()
-        print 'Got to WAMP Client instance 1 onConnect callback'
+        print('Got to WAMP Client instance 1 onConnect callback')
 
-        print ('Subscribing to topic.test1')
+        print('Subscribing to topic.test1')
         client1:subscribe('topic.test1', {
             onSuccess = function()
-                print 'Got to topic topic.test1 instance 1 subscribe onSuccess'
+                print('Got to topic topic.test1 instance 1 subscribe onSuccess')
             end,
             onError = function(err)
-                print ('Got to topic topic.test1 instance 1 subscribe onError: ' .. err)
+                print('Got to topic topic.test1 instance 1 subscribe onError: ' .. err.error)
             end,
             onEvent = function(evt)
-                print 'Got to topic topic.test1 instance 1 subscribe onEvent'
-                print ('Event payload: ')
+                print('Got to topic topic.test1 instance 1 subscribe onEvent')
+                print('Event payload: ')
                 printdump(evt)
             end
         })
@@ -58,13 +59,13 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
         local publishTimer
         publishTimer = ev.Timer.new(function()
             publishTimer:stop(ev.Loop.default)
-            print ('Publishing to topic.test1 instance 1 without payload')
+            print('Publishing to topic.test1 instance 1 without payload')
             client1:publish('topic.test1', nil, {
                 onSuccess = function()
-                    print 'Got to publish to topic topic.test1 instance 1 onSuccess'
+                    print('Got to publish to topic topic.test1 instance 1 onSuccess')
                 end,
                 onError = function(err)
-                    print ('Got to publish to topic topic.test1 instance 1 onError: ' .. err)
+                    print('Got to publish to topic topic.test1 instance 1 onError: ' .. err.error)
                 end
             })
         end, 10)
@@ -73,48 +74,47 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
         local unsubscribeTimer
         unsubscribeTimer = ev.Timer.new(function()
             unsubscribeTimer:stop(ev.Loop.default)
-            print ('Unsubscribing from topic.test1 instance 1')
+            print('Unsubscribing from topic.test1 instance 1')
             client1:unsubscribe('topic.test1', {
                 onSuccess = function()
-                    print 'Got to unsubscribe from topic topic.test1 instance 1 onSuccess'
+                    print('Got to unsubscribe from topic topic.test1 instance 1 onSuccess')
                 end,
                 onError = function(err)
-                    print ('Got to unsubscribe from topic topic.test1 instance 1 onError: ' .. err)
+                    print('Got to unsubscribe from topic topic.test1 instance 1 onError: ' .. err.error)
                 end
             })
         end, 10)
         unsubscribeTimer:start(ev.Loop.default)
 
-        print ('Registering new RPC rpc.test1 instance 1')
+        print('Registering new RPC rpc.test1 instance 1')
         client1:register('rpc.test1', {
-            rpc = function (data)
-                print ('Invoked rpc.test1 instance 1')
-                print ('RPC payload')
+            rpc = function(data)
+                print('Invoked rpc.test1 instance 1')
+                print('RPC payload')
                 printdump(data)
-                return data
+                return { argsList = data.argsList, argsDict = data.argsDict }
             end,
             onSuccess = function()
-                print 'Got to register rpc rpc.test1 instance 1 onSuccess'
+                print('Got to register rpc rpc.test1 instance 1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to register rpc rpc.test1 instance 1 onError: ' .. err)
+                print('Got to register rpc rpc.test1 instance 1 onError: ' .. err.error)
             end
         })
 
         local callTimer
         callTimer = ev.Timer.new(function()
             callTimer:stop(ev.Loop.default)
-            print 'Calling rpc rpc.test2 from instance 1 with payload: string "string payload"'
+            print('Calling rpc rpc.test2 from instance 1 with payload: string "string payload"')
             client1:call('rpc.test2', "string payload", {
                 onSuccess = function(data)
-                    print 'Got to rpc call rpc.test2 onSuccess'
-                    print 'Call result'
+                    print('Got to rpc call rpc.test2 onSuccess')
+                    print('Call result')
                     printdump(data)
                 end,
                 onError = function(err)
-                    print ('Got to rpc call rpc.test2 instance 1 onError: ' .. err)
+                    print('Got to rpc call rpc.test2 instance 1 onError: ' .. err.error)
                 end
-
             })
         end, 10)
         callTimer:start(ev.Loop.default)
@@ -122,42 +122,42 @@ client1 = loowy.new(wsServer, { transportEncoding = 'json',
         local disconnectTimer
         disconnectTimer = ev.Timer.new(function()
             disconnectTimer:stop(ev.Loop.default)
-            print ('Disconnecting from WAMP Server instance 1')
+            print('Disconnecting from WAMP Server instance 1')
             client1:disconnect()
         end, 30)
         disconnectTimer:start(ev.Loop.default)
-
     end,
     onClose = function()
-        print 'Got to WAMP Client instance 1 onClose callback'
+        print('Got to WAMP Client instance 1 onClose callback')
     end,
     onError = function(err)
-        print ('Got to WAMP Client instance 1 onError callback: ' .. err)
+        print('Got to WAMP Client instance 1 onError callback: ' .. err.error)
     end,
     onReconnect = function()
-        print 'Got to WAMP Client instance 1 onReconnect callback'
+        print('Got to WAMP Client instance 1 onReconnect callback')
     end
 })
 
-client2 = loowy.new(wsServer, { transportEncoding = 'json',
+client2 = loowy.new(wsServer, {
+    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
     debug = config.debug,
     onConnect = function()
-        print 'Got to WAMP Client instance 2 onConnect callback'
+        print('Got to WAMP Client instance 2 onConnect callback')
 
-        print ('Subscribing to topic.test1')
+        print('Subscribing to topic.test1')
         client2:subscribe('topic.test1', {
             onSuccess = function()
-                print 'Got to topic topic.test1 instance 2 subscribe onSuccess'
+                print('Got to topic topic.test1 instance 2 subscribe onSuccess')
             end,
             onError = function(err)
-                print ('Got to topic topic.test1 instance 2 subscribe onError: ' .. err)
+                print('Got to topic topic.test1 instance 2 subscribe onError: ' .. err.error)
             end,
             onEvent = function(evt)
-                print 'Got to topic topic.test1 instance 2 subscribe onEvent'
-                print ('Event payload: ')
+                print('Got to topic topic.test1 instance 2 subscribe onEvent')
+                print('Event payload: ')
                 printdump(evt)
             end
         })
@@ -165,13 +165,13 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
         local publishTimer
         publishTimer = ev.Timer.new(function()
             publishTimer:stop(ev.Loop.default)
-            print ('Publishing to topic.test1 instance 2 without payload')
+            print('Publishing to topic.test1 instance 2 without payload')
             client2:publish('topic.test1', nil, {
                 onSuccess = function()
-                    print 'Got to publish to topic topic.test1 instance 2 onSuccess'
+                    print('Got to publish to topic topic.test1 instance 2 onSuccess')
                 end,
                 onError = function(err)
-                    print ('Got to publish to topic topic.test1 instance 2 onError: ' .. err)
+                    print('Got to publish to topic topic.test1 instance 2 onError: ' .. err.error)
                 end
             })
         end, 10)
@@ -180,48 +180,47 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
         local unsubscribeTimer
         unsubscribeTimer = ev.Timer.new(function()
             unsubscribeTimer:stop(ev.Loop.default)
-            print ('Unsubscribing from topic.test1 instance 2')
+            print('Unsubscribing from topic.test1 instance 2')
             client2:unsubscribe('topic.test1', {
                 onSuccess = function()
-                    print 'Got to unsubscribe from topic topic.test1 instance 2 onSuccess'
+                    print('Got to unsubscribe from topic topic.test1 instance 2 onSuccess')
                 end,
                 onError = function(err)
-                    print ('Got to unsubscribe from topic topic.test1 instance 2 onError: ' .. err)
+                    print('Got to unsubscribe from topic topic.test1 instance 2 onError: ' .. err.error)
                 end
             })
         end, 20)
         unsubscribeTimer:start(ev.Loop.default)
 
-        print ('Registering new RPC rpc.test2 instance 2')
+        print('Registering new RPC rpc.test2 instance 2')
         client2:register('rpc.test2', {
-            rpc = function (data)
-                print ('Invoked rpc.test2 instance 2')
-                print ('RPC payload')
+            rpc = function(data)
+                print('Invoked rpc.test2 instance 2')
+                print('RPC payload')
                 printdump(data)
-                return data
+                return { argsList = data.argsList, argsDict = data.argsDict }
             end,
             onSuccess = function()
-                print 'Got to register rpc rpc.test2 instance 2 onSuccess'
+                print('Got to register rpc rpc.test2 instance 2 onSuccess')
             end,
             onError = function(err)
-                print ('Got to register rpc rpc.test2 instance 2 onError: ' .. err)
+                print('Got to register rpc rpc.test2 instance 2 onError: ' .. err.error)
             end
         })
 
         local callTimer
         callTimer = ev.Timer.new(function()
             callTimer:stop(ev.Loop.default)
-            print 'Calling rpc rpc.test1 from instance 2 with payload: string "string payload"'
+            print('Calling rpc rpc.test1 from instance 2 with payload: string "string payload"')
             client2:call('rpc.test1', "string payload", {
                 onSuccess = function(data)
-                    print 'Got to rpc call rpc.test1 onSuccess'
-                    print 'Call result'
+                    print('Got to rpc call rpc.test1 onSuccess')
+                    print('Call result')
                     printdump(data)
                 end,
                 onError = function(err)
-                    print ('Got to rpc call rpc.test1 instance 2 onError: ' .. err)
+                    print('Got to rpc call rpc.test1 instance 2 onError: ' .. err.error)
                 end
-
             })
         end, 10)
         callTimer:start(ev.Loop.default)
@@ -229,21 +228,20 @@ client2 = loowy.new(wsServer, { transportEncoding = 'json',
         local disconnectTimer
         disconnectTimer = ev.Timer.new(function()
             disconnectTimer:stop(ev.Loop.default)
-            print ('Disconnecting from WAMP Server instance 2')
+            print('Disconnecting from WAMP Server instance 2')
             client2:disconnect()
         end, 30)
         disconnectTimer:start(ev.Loop.default)
-
     end,
     onClose = function()
-        print 'Got to WAMP Client instance 2 onClose callback'
+        print('Got to WAMP Client instance 2 onClose callback')
     end,
-    onError = function(err1)
-        printdump(err1)
-        print ('Got to WAMP Client instance 2 onError callback: ' .. err1)
+    onError = function(err)
+        printdump(err)
+        print('Got to WAMP Client instance 2 onError callback: ' .. err.error)
     end,
     onReconnect = function()
-        print 'Got to WAMP Client instance 2 onReconnect callback'
+        print('Got to WAMP Client instance 2 onReconnect callback')
     end
 })
 

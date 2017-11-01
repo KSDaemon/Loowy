@@ -29,66 +29,60 @@ local ev = require 'ev'
 local loowy = require 'loowy.client'
 
 local client1
-local firstDisconnect = true
 
-print('Connecting client to WAMP Server: ' ..  wsServer)
+print('Connecting client to WAMP Server: ' .. wsServer)
 
-client1 = loowy.new(wsServer, { transportEncoding = 'json',
+client1 = loowy.new(wsServer, {
+    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
     debug = config.debug,
     onConnect = function()
-        print 'Got to WAMP Client instance onConnect callback'
+        print('Got to WAMP Client instance onConnect callback')
 
-        print ('Publishing to topic.test1 with payload: string "string payload"')
+        print('Publishing to topic.test1 with payload: string "string payload"')
         client1:publish('topic.test1', "string payload", {
             onSuccess = function()
-                print 'Got to publish to topic topic.test1 onSuccess'
+                print('Got to publish to topic topic.test1 onSuccess')
             end,
             onError = function(err)
-                print ('Got to publish to topic topic.test1 onError: ' .. err)
+                print('Got to publish to topic topic.test1 onError: ' .. err.error)
             end
         }, { disclose_me = true, exclude_me = false })
 
-        print 'Calling rpc rpc.test1 without data'
+        print('Calling rpc rpc.test1 without data')
         client1:call('rpc.test1', nil, {
-            onSuccess = function(dataList, dataDict)
-                print 'Got to rpc call rpc.test1 onSuccess'
-                print 'Call result'
-                print ('List')
-                printdump(dataList)
-                print ('Dict')
-                printdump(dataDict)
-            end,
-            onError = function(err)
-                print ('Got to rpc call rpc.test1 onError: ' .. err)
-            end
-
-        }, { disclose_me = true, exclude_me = false })
-
-        print 'Calling rpc rpc.test1 with payload: string "string payload"'
-        client1:call('rpc.test1', "string payload", {
             onSuccess = function(data)
-                print 'Got to rpc call rpc.test1 onSuccess'
-                print 'Call result'
+                print('Got to rpc call rpc.test1 onSuccess')
+                print('Call result')
                 printdump(data)
             end,
             onError = function(err)
-                print ('Got to rpc call rpc.test1 onError: ' .. err)
+                print('Got to rpc call rpc.test1 onError: ' .. err.error)
             end
-
         }, { disclose_me = true, exclude_me = false })
 
+        print('Calling rpc rpc.test1 with payload: string "string payload"')
+        client1:call('rpc.test1', "string payload", {
+            onSuccess = function(data)
+                print('Got to rpc call rpc.test1 onSuccess')
+                print('Call result')
+                printdump(data)
+            end,
+            onError = function(err)
+                print('Got to rpc call rpc.test1 onError: ' .. err.error)
+            end
+        }, { disclose_me = true, exclude_me = false })
     end,
     onClose = function()
-        print 'Got to WAMP Client instance onClose callback'
+        print('Got to WAMP Client instance onClose callback')
     end,
     onError = function(err)
-        print ('Got to WAMP Client instance onError callback: ' .. err)
+        print('Got to WAMP Client instance onError callback: ' .. err.error)
     end,
     onReconnect = function()
-        print 'Got to WAMP Client instance onReconnect callback'
+        print('Got to WAMP Client instance onReconnect callback')
     end
 })
 
