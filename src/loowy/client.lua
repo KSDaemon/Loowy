@@ -87,16 +87,11 @@ local WAMP_ERROR_MSG = {
     NO_BROKER = { code = 2, description = "Server doesn't provide broker role!" },
     NO_CALLBACK_SPEC = { code = 3, description = "No required callback function specified!" },
     INVALID_PARAM = { code = 4, description = "Invalid parameter(s) specified!" },
-    NON_EXIST_SUBSCRIBE_CONFIRM = { code = 5, description = "Received subscribe confirmation to non existent subscription!" },
-    NON_EXIST_REQUEST_ERROR = { code = 6, description = "Received error for non existent request!" },
+    INVALID_SERIALIZER_TYPE = { code = 5, description = "Serializer with unsupported type provided!" },
+    NO_SERIALIZER_AVAILABLE = { code = 6, description = "Server has chosen a serializer, which is not available!" },
     NON_EXIST_UNSUBSCRIBE = { code = 7, description = "Trying to unsubscribe from non existent subscription!" },
-    NON_EXIST_SUBSCRIBE_UNSUBSCRIBED = { code = 8, description = "Received unsubscribe confirmation to non existent subscription!" },
-    NON_EXIST_PUBLISH_PUBLISHED = { code = 10, description = "Received publish confirmation for non existent publication!" },
-    NON_EXIST_SUBSCRIBE_EVENT = { code = 11, description = "Received event for non existent subscription!" },
     NO_DEALER = { code = 12, description = "Server doesn't provide dealer role!" },
-    NON_EXIST_CALL_RESULT = { code = 13, description = "Received rpc result for non existent call!" },
     RPC_ALREADY_REGISTERED = { code = 15, description = "RPC already registered!" },
-    NON_EXIST_RPC_REG = { code = 16, description = "Received rpc registration confirmation for non existent rpc!" },
     NON_EXIST_RPC_UNREG = { code = 17, description = "Received rpc unregistration confirmation for non existent rpc!" },
     NON_EXIST_RPC_INVOCATION = { code = 19, description = "Received invocation for non existent rpc!" },
     NON_EXIST_RPC_REQ_ID = { code = 20, description = "No RPC calls in action with specified request ID!" },
@@ -105,10 +100,6 @@ local WAMP_ERROR_MSG = {
     NO_CRA_CB_OR_ID = { code = 23, description = "No onChallenge callback or authid was provided for authentication!" },
     CRA_EXCEPTION = { code = 24, description = "Exception raised during CRA challenge processing" }
 }
-
--- Loowy client class
---local Loowy = {}
---Loowy.__index = Loowy -- failed table lookups on the instances should fallback to the class table, to get methods
 
 ---------------------------------------------------
 -- Create a new Loowy instance
@@ -275,6 +266,7 @@ function _M.new(url, opts)
     -- Instance private methods
     ---------------------------------------------------
 
+    -- function is defined later
     local _wsReconnect
 
     ---------------------------------------------------
@@ -351,6 +343,7 @@ function _M.new(url, opts)
         local te = 'wamp.2.' .. options.transportEncoding
         local idx = _arrayIndexOf(cache.protocols, te)
 
+        -- moving chosen encoding to first place (may be server choose it)
         if idx > 1 then
             table.remove(cache.protocols, idx)
             table.insert(cache.protocols, 1, te)
@@ -399,7 +392,7 @@ function _M.new(url, opts)
         end
 
         if type(callbacks) == 'table' and type(callbacks.onError) == 'function' then
-            callbacks.onError(cache.opStatus.description)
+            callbacks.onError({ error = cache.opStatus.description })
         end
         return false
     end
@@ -484,6 +477,11 @@ function _M.new(url, opts)
         end
 
         local runtimeOptions = _tableMerge(_tableMerge({}, options.helloCustomDetails), WAMP_FEATURES)
+
+        if options.authid then
+            runtimeOptions.authid = options.authid
+            runtimeOptions.authmethods = options.authmethods
+        end
 
         options.transportEncoding = string.match(wsProtocol,'.*%.([^.]+)$')
 
@@ -593,7 +591,7 @@ function _M.new(url, opts)
         elseif data[1] == WAMP_MSG_SPEC.ABORT then
             -- WAMP SPEC: [ABORT, Details|dict, Reason|uri]
             if type(options.onError) == 'function' then
-                options.onError(data[2] or data[3])
+                options.onError({ error = data[3], details = data[2] })
             end
 
             ws:close()
@@ -629,12 +627,15 @@ function _M.new(url, opts)
                 if requests[data[3]] then
 
                     if type(requests[data[3]].callbacks.onError) == 'function' then
-                        requests[data[3]].callbacks.onError(data[5], data[4], data[6], data[7])
+                        requests[data[3]].callbacks.onError({
+                            error = data[5],
+                            details = data[4],
+                            argsList = data[6],
+                            argsDict = data[7]
+                        })
                     end
 
                     requests[data[3]] = nil
-                else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_REQUEST_ERROR
                 end
 
             elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
@@ -647,22 +648,21 @@ function _M.new(url, opts)
                         -- WAMP SPEC: [ERROR, CALL, CALL.Request|id, Details|dict,
                         --             Error|uri, Arguments|list, ArgumentsKw|dict]
 
-                        calls[data[3]].onError(data[5], data[4], data[6], data[7])
+                        calls[data[3]].onError({
+                            error = data[5],
+                            details = data[4],
+                            argsList = data[6],
+                            argsDict = data[7]
+                        })
                     end
 
                     calls[data[3]] = nil
-
-                else
-                    cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_REQUEST_ERROR
                 end
-
             else
                 _log('Received non-compliant WAMP ERROR message')
             end
-
         elseif data[1] == WAMP_MSG_SPEC.SUBSCRIBED then
             -- WAMP SPEC: [SUBSCRIBED, SUBSCRIBE.Request|id, Subscription|id]
-
             if requests[data[2]] then
 
                 subscriptions[requests[data[2]].topic] = {
@@ -678,13 +678,9 @@ function _M.new(url, opts)
                 end
 
                 requests[data[2]] = nil
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_CONFIRM
             end
-
         elseif data[1] == WAMP_MSG_SPEC.UNSUBSCRIBED then
             -- WAMP SPEC: [UNSUBSCRIBED, UNSUBSCRIBE.Request|id]
-
             if requests[data[2]] then
 
                 local id = subscriptions[requests[data[2]].topic].id
@@ -701,13 +697,9 @@ function _M.new(url, opts)
                 end
 
                 requests[data[2]] = nil
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_UNSUBSCRIBED
             end
-
         elseif data[1] == WAMP_MSG_SPEC.PUBLISHED then
             -- WAMP SPEC: [PUBLISHED, PUBLISH.Request|id, Publication|id]
-
             if requests[data[2]] then
 
                 if type(requests[data[2]].callbacks.onSuccess) == 'function' then
@@ -715,27 +707,22 @@ function _M.new(url, opts)
                 end
 
                 requests[data[2]] = nil
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_PUBLISH_PUBLISHED
             end
-
         elseif data[1] == WAMP_MSG_SPEC.EVENT then
             -- WAMP SPEC: [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id,
             --             Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
-
             if subscriptions[data[2]] then
 
                 for k, callback in ipairs(subscriptions[data[2]].callbacks) do
-                    callback(data[5], data[6], data[4])
+                    callback({
+                        details = data[4],
+                        argsList = data[5],
+                        argsDict = data[6]
+                    })
                 end
-
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_SUBSCRIBE_EVENT
             end
-
         elseif data[1] == WAMP_MSG_SPEC.RESULT then
             -- WAMP SPEC: [RESULT, CALL.Request|id, Details|dict, YIELD.Arguments|list, YIELD.ArgumentsKw|dict]
-
             if calls[data[2]] then
 
                 calls[data[2]].onSuccess(data[4], data[5])
@@ -743,16 +730,9 @@ function _M.new(url, opts)
                     -- We've received final result (progressive or not)
                     calls[data[2]] = nil
                 end
-
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_CALL_RESULT
             end
-
-        elseif data[1] == WAMP_MSG_SPEC.REGISTER then
-
         elseif data[1] == WAMP_MSG_SPEC.REGISTERED then
             -- WAMP SPEC: [REGISTERED, REGISTER.Request|id, Registration|id]
-
             if requests[data[2]] then
 
                 rpcRegs[requests[data[2]].topic] = {
@@ -768,15 +748,9 @@ function _M.new(url, opts)
                 end
 
                 requests[data[2]] = nil
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_REG
             end
-
-        elseif data[1] == WAMP_MSG_SPEC.UNREGISTER then
-
         elseif data[1] == WAMP_MSG_SPEC.UNREGISTERED then
             -- WAMP SPEC: [UNREGISTERED, UNREGISTER.Request|id]
-
             if requests[data[2]] then
 
                 local id = rpcRegs[requests[data[2]].topic].id
@@ -793,18 +767,18 @@ function _M.new(url, opts)
                 end
 
                 requests[data[2]] = nil
-            else
-                cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_UNREG
             end
-
         elseif data[1] == WAMP_MSG_SPEC.INVOCATION then
             -- WAMP SPEC: [INVOCATION, Request|id, REGISTERED.Registration|id,
             --             Details|dict, CALL.Arguments|list, CALL.ArgumentsKw|dict]
-
             if rpcRegs[data[3]] then
 
                 local msg
-                local status, result = pcall(rpcRegs[data[3]].callbacks[1], data[5], data[6], data[4])
+                local status, result = pcall(rpcRegs[data[3]].callbacks[1], {
+                    details = data[4],
+                    argsList = data[5],
+                    argsDict = data[6]
+                })
 
                 _log('RPC invocation status: ', status, 'result: ', result)
 
@@ -815,24 +789,27 @@ function _M.new(url, opts)
 
                     if type(result) == 'table' then
 
-                        msg[3] = result[1]  -- Options
+                        if type(result.options) == 'table' then
+                            msg[3] = result.options
+                        end
 
-                        if type(result[2]) == 'table' then
-                            if result[2][1] ~= nil then
-                                table.insert(msg, result[2])
+                        if type(result.argsList) == 'table' then
+                            if result.argsList[1] ~= nil then
+                                table.insert(msg, result.argsList)
                             else    -- assume it's empty table
                                 table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
-                        elseif result[2] ~= nil then
-                            table.insert(msg, { result[2] })
+                        elseif result.argsList ~= nil then
+                            table.insert(msg, { result.argsList })
                         end
 
-                        if type(result[3]) == 'table' then
+                        if result.argsDict then
                             if #msg == 3 then
                                 table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
                             end
-                            table.insert(msg, result[3])
+                            table.insert(msg, result.argsDict)
                         end
+
                     end
                 else
                     -- WAMP SPEC: [ERROR, INVOCATION, INVOCATION.Request|id, Details|dict,
@@ -846,8 +823,8 @@ function _M.new(url, opts)
                             msg[4] = result.details
                         end
 
-                        if result.uri then
-                            msg[5] = result.uri
+                        if result.error then
+                            msg[5] = result.error
                         end
 
                         if type(result.argsList) == 'table' then
@@ -876,10 +853,7 @@ function _M.new(url, opts)
 
                 cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_INVOCATION
             end
-
-        elseif data[1] == WAMP_MSG_SPEC.INTERRUPT then
-
-        elseif data[1] == WAMP_MSG_SPEC.YIELD then
+--        elseif data[1] == WAMP_MSG_SPEC.INTERRUPT then
 
         else
             _log('Received non-compliant WAMP message')
@@ -896,7 +870,7 @@ function _M.new(url, opts)
         _log('websocket OnError event fired with error: ' .. error)
 
         if type(options.onError) == 'function' then
-            options.onError(error)
+            options.onError({ error = error })
         end
     end
 
@@ -1050,10 +1024,12 @@ function _M.new(url, opts)
     --
     -- topicURI - topic to subscribe
     -- callbacks - if it is a function - it will be treated as published event callback
-    --                           or it can be hash table of callbacks:
-    --                           { onSuccess: will be called when subscribe would be confirmed
-    --                             onError: will be called if subscribe would be aborted
-    --                             onEvent: will be called on receiving published event }
+    --             or it can be hash table of callbacks:
+    --             {
+    --                 onSuccess: will be called when subscribe would be confirmed
+    --                 onError: will be called if subscribe would be aborted
+    --                 onEvent: will be called on receiving published event
+    --             }
     -------------------------------------------------------------------------------------------
     function loowy:subscribe(topicURI, callbacks)
         local reqId
@@ -1070,7 +1046,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
             return
@@ -1107,10 +1083,12 @@ function _M.new(url, opts)
     --
     -- topicURI - topic to unsubscribe
     -- callbacks - if it is a function - it will be treated as
-    --                          published event callback to remove or it can be hash table of callbacks:
-    --                           { onSuccess: will be called when unsubscribe would be confirmed
-    --                             onError: will be called if unsubscribe would be aborted
-    --                             onEvent: published event callback to remove (and allow others }
+    --             published event callback to remove or it can be hash table of callbacks:
+    --             {
+    --                 onSuccess: will be called when unsubscribe would be confirmed
+    --                 onError: will be called if unsubscribe would be aborted
+    --                 onEvent: published event callback to remove (and allow others
+    --             }
     ---------------------------------------------------------------------------------------------
     function loowy:unsubscribe(topicURI, callbacks)
         local reqId
@@ -1155,7 +1133,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_UNSUBSCRIBE
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
             return
@@ -1169,26 +1147,36 @@ function _M.new(url, opts)
     -- Publish a event to topic
     --
     -- topicURI - topic to publish
-    -- payload - optional parameter, can be any value
+    -- payload - optional parameter, can be either a value of any type or null.  Also it is possible
+    --           to pass array and object-like data simultaneously.
+    --           In this case pass a  table with next attributes:
+    --           {
+    --              argsList: array payload (may be omitted)
+    --              argsDict: object payload (may be omitted)
+    --           }
     -- callbacks - optional table of callbacks:
-    --                           { onSuccess: will be called when publishing would be confirmed
-    --                             onError: will be called if publishing would be aborted }
+    --           {
+    --              onSuccess: will be called when publishing would be confirmed
+    --              onError: will be called if publishing would be aborted
+    --           }
     -- advancedOptions - optional parameter. Must include any or all of the options:
-    --                         { exclude: integer|array WAMP session id(s) that won't receive a published event,
+    --           {
+    --              exclude: integer|array WAMP session id(s) that won't receive a published event,
     --                                     even though they may be subscribed
-    --                           exclude_authid: string|array Authentication id(s) that won't receive
+    --              exclude_authid: string|array Authentication id(s) that won't receive
     --                                     a published event, even though they may be subscribed
-    --                           exclude_authrole: string|array Authentication role(s) that won't receive
+    --              exclude_authrole: string|array Authentication role(s) that won't receive
     --                                     a published event, even though they may be subscribed
-    --                           eligible: integer|array WAMP session id(s) that are allowed
+    --              eligible: integer|array WAMP session id(s) that are allowed
     --                                     to receive a published event
-    --                           eligible_authid: string|array Authentication id(s) that are allowed
+    --              eligible_authid: string|array Authentication id(s) that are allowed
     --                                     to receive a published event
-    --                           eligible_authrole: string|array Authentication role(s) that are allowed
+    --              eligible_authrole: string|array Authentication role(s) that are allowed
     --                                     to receive a published event
-    --                           exclude_me: bool flag of receiving publishing event by initiator
-    --                           disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
-    --                                     to receivers of a published event }
+    --              exclude_me: bool flag of receiving publishing event by initiator
+    --              disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
+    --                                     to receivers of a published event
+    --           }
     ----------------------------------------------------------------------------------------------------------------
     function loowy:publish(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
@@ -1282,7 +1270,7 @@ function _M.new(url, opts)
                 cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
 
                 if type(callbacks.onError) == 'function' then
-                    callbacks.onError(cache.opStatus.description)
+                    callbacks.onError({ error = cache.opStatus.description })
                 end
 
                 return
@@ -1298,15 +1286,40 @@ function _M.new(url, opts)
             }
         end
 
+
         -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri(, Arguments|list (, ArgumentsKw|dict))]
-        if payload == nil then
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
-        elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, payload }
-        elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, setmetatable({}, { __jsontype = 'array' }), payload }
-        else    -- assume it's a single value
-            msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI, { payload } }
+        msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
+
+        if payload ~= nil then
+
+            if type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
+                table.insert(msg, payload)
+            elseif type(payload) == 'table' then    -- it's a dict
+
+                -- check for unified form of payload passing
+                if payload.argsList or payload.argsDict then
+
+                    if type(payload.argsList) == 'table' then
+                        if payload.argsList[1] ~= nil then
+                            table.insert(msg, payload.argsList)
+                        end
+                    elseif payload.argsList ~= nil then
+                        table.insert(msg, { payload.argsList })
+                    end
+
+                    if payload.argsDict then
+                        if #msg == 4 then
+                            table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
+                        end
+                        table.insert(msg, payload.argsDict)
+                    end
+                else
+                    table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
+                    table.insert(msg, payload)
+                end
+            else    -- assume it's a single value
+                table.insert(msg, { payload })
+            end
         end
 
         _send(msg)
@@ -1318,17 +1331,27 @@ function _M.new(url, opts)
     -- Remote Procedure Call
     --
     -- topicURI - topic to call
-    -- payload - can be either a value of any type or null
+    -- payload - optional parameter, can be either a value of any type or null.  Also it is possible
+    --           to pass array and object-like data simultaneously.
+    --           In this case pass a  table with next attributes:
+    --           {
+    --              argsList: array payload (may be omitted)
+    --              argsDict: object payload (may be omitted)
+    --           }
     -- callbacks - if it is a function - it will be treated as result callback function
     --                     or it can be hash table of callbacks:
-    --                     { onSuccess: will be called with result on successful call
-    --                       onError: will be called if invocation would be aborted }
+    --           {
+    --               onSuccess: will be called with result on successful call
+    --               onError: will be called if invocation would be aborted
+    --           }
     -- advancedOptions - optional parameter. Must include any or all of the options:
-    --                   { exclude_me: bool flag of potentially forwarding call to caller if he is registered as callee
-    --                     disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
+    --           {
+    --               disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
     --                                  to endpoints of a routed call
-    --                     receive_progress: bool flag for receiving progressive results. In this case
-    --                                  onSuccess function will be called every time on receiving result }
+    --               receive_progress: bool flag for receiving progressive results. In this case
+    --                                  onSuccess function will be called every time on receiving result
+    --               timeout: integer timeout (in seconds) for the call to finish
+    --           }
     --------------------------------------------------------------------------------------------------------------------
     function loowy:call(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
@@ -1347,19 +1370,13 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
             return
         end
 
         if type(advancedOptions) == 'table' then
-
-            if type(advancedOptions.exclude_me) == 'boolean' then
-                options.exclude_me = advancedOptions.exclude_me ~= false
-            elseif advancedOptions.exclude_me ~= nil then
-                err = true
-            end
 
             if type(advancedOptions.disclose_me) == 'boolean' then
                 options.disclose_me = advancedOptions.disclose_me == true
@@ -1373,12 +1390,18 @@ function _M.new(url, opts)
                 err = true
             end
 
+            if type(advancedOptions.timeout) == 'number' then
+                options.timeout = advancedOptions.timeout
+            elseif advancedOptions.timeout ~= nil then
+                err = true
+            end
+
             if err then
 
                 cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
 
                 if type(callbacks.onError) == 'function' then
-                    callbacks.onError(cache.opStatus.description)
+                    callbacks.onError({ error = cache.opStatus.description })
                 end
 
                 return
@@ -1393,15 +1416,37 @@ function _M.new(url, opts)
         calls[reqId] = callbacks
 
         -- WAMP SPEC: [CALL, Request|id, Options|dict, Procedure|uri, (Arguments|list, ArgumentsKw|dict)]
+        msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI }
 
-        if payload == nil  then
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI }
-        elseif type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, payload }
-        elseif type(payload) == 'table' then    -- it's a dict
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, setmetatable({}, { __jsontype = 'array' }), payload }
-        else -- assume it's a single value
-            msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI, { payload } }
+        if payload ~= nil then
+
+            if type(payload) == 'table' and payload[1] ~= nil then -- assume it's an array
+                table.insert(msg, payload)
+            elseif type(payload) == 'table' then    -- it's a dict
+
+                -- check for unified form of payload passing
+                if payload.argsList or payload.argsDict then
+                    if type(payload.argsList) == 'table' then
+                        if payload.argsList[1] ~= nil then
+                            table.insert(msg, payload.argsList)
+                        end
+                    elseif payload.argsList ~= nil then
+                        table.insert(msg, { payload.argsList })
+                    end
+
+                    if payload.argsDict then
+                        if #msg == 4 then
+                            table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
+                        end
+                        table.insert(msg, payload.argsDict)
+                    end
+                else
+                    table.insert(msg, setmetatable({}, { __jsontype = 'array' }))
+                    table.insert(msg, payload)
+                end
+            else    -- assume it's a single value
+                table.insert(msg, { payload })
+            end
         end
 
         _send(msg)
@@ -1414,12 +1459,15 @@ function _M.new(url, opts)
     --
     -- reqId - RPC call request ID
     -- callbacks - if it is a function - it will be called if successfully
-    --                          sent canceling message or it can be hash table of callbacks:
-    --                          { onSuccess: will be called if successfully sent canceling message
-    --                            onError: will be called if some error occurred }
+    --             sent canceling message or it can be hash table of callbacks:
+    --             {
+    --                 onSuccess: will be called if successfully sent canceling message
+    --                 onError: will be called if some error occurred
+    --             }
     -- advancedOptions - optional parameter. Must include any or all of the options:
-    --                          { mode: string|one of the possible modes:
-    --                                  "skip" | "kill" | "killnowait". Skip is default }
+    --             {
+    --                 mode: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default
+    --             }
     ------------------------------------------------------------------------------------------
     function loowy:cancel(reqId, callbacks, advancedOptions)
         local options = { mode = 'skip' }
@@ -1432,7 +1480,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_REQ_ID
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
             return
@@ -1461,10 +1509,12 @@ function _M.new(url, opts)
     --
     -- topicURI - topic to register
     -- callbacks - if it is a function - it will be treated as rpc itself
-    --                           or it can be hash table of callbacks:
-    --                           { rpc: registered procedure
-    --                             onSuccess: will be called on successful registration
-    --                             onError: will be called if registration would be aborted }
+    --             or it can be hash table of callbacks:
+    --             {
+    --                 rpc: registered procedure
+    --                 onSuccess: will be called on successful registration
+    --                 onError: will be called if registration would be aborted
+    --             }
     ------------------------------------------------------------------------------------------
     function loowy:register(topicURI, callbacks)
         local reqId
@@ -1481,7 +1531,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
             return
@@ -1503,7 +1553,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.RPC_ALREADY_REGISTERED
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
 
         end
@@ -1514,9 +1564,11 @@ function _M.new(url, opts)
     --
     -- topicURI - topic to unregister
     -- callbacks - if it is a function, it will be called on successful unregistration
-    --                          or it can be hash table of callbacks:
-    --                          { onSuccess: will be called on successful unregistration
-    --                            onError: will be called if unregistration would be aborted }
+    --             or it can be hash table of callbacks:
+    --             {
+    --                 onSuccess: will be called on successful unregistration
+    --                 onError: will be called if unregistration would be aborted
+    --             }
     -------------------------------------------------------------------------------------------
     function loowy:unregister(topicURI, callbacks)
         local reqId
@@ -1544,7 +1596,7 @@ function _M.new(url, opts)
             cache.opStatus = WAMP_ERROR_MSG.NON_EXIST_RPC_UNREG
 
             if type(callbacks.onError) == 'function' then
-                callbacks.onError(cache.opStatus.description)
+                callbacks.onError({ error = cache.opStatus.description })
             end
         end
     end

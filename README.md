@@ -193,17 +193,18 @@ Subscribe to a topic on a broker.
 
 Parameters:
 
-* topicURI - topic to subscribe
-* callbacks - if it is a function - it will be treated as published event callback 
-or it can be hash table of callbacks:
-
-    { 
-        onSuccess: will be called when subscription would be confirmed
-        onError:   will be called if subscription would be aborted with 2-4 parameters:
-                (Error|uri|string, Details|object[, Arguments|list, ArgumentsKw|dict])
-        onEvent:   will be called on receiving published event with 3 parameters: 
-                (Arguments|array, ArgumentsKw|object, Details|object) 
-    }
+* **topicURI**. Required. A string that identifies the topic.
+Must meet a WAMP Spec URI requirements.
+* **callbacks**. If it is a function - it will be treated as published event callback or 
+it can be hash table of callbacks:
+    * **onSuccess**: will be called when subscription would be confirmed
+    * **onError**: will be called if subscription would be aborted with one hash-table parameter with following attributes:
+        * **error**: string error description
+        * **details**: hash-table with some error details
+    * **onEvent**:   will be called on receiving published event with one hash-table parameter with following attributes: 
+        * **argsList**: array payload (may be omitted)
+        * **argsDict**: object payload (may be omitted)
+        * **details**: some publication options object. 
 
 [Back to TOC](#table-of-contents)
 
@@ -214,15 +215,16 @@ Unsubscribe from topic.
 
 Parameters:
 
-* topicURI - topic to unsubscribe
-* callbacks - if it is a function - it will be treated as published event callback to remove or it can be hash table of callbacks:
-
-    { 
-        onSuccess: will be called when unsubscription would be confirmed
-        onError: will be called if unsubscribe would be aborted with 2 parameters:
-                      (Error|uri|string, Details|object)
-        onEvent: published event callback to remove 
-    }
+* **topicURI**. Required. A string that identifies the topic.
+Must meet a WAMP Spec URI requirements.
+* **callbacks**. If it is a function - it will be treated as published event callback to remove
+             or it can be hash table of callbacks:
+    * **onSuccess**: will be called when unsubscription would be confirmed
+    * **onError**: will be called if unsubscribe would be aborted with one hash-table parameter with following attributes:
+        * **error**: string error description
+        * **details**: hash-table with some error details
+    * **onEvent**: published event callback instance to remove or it can be not specified, 
+                   in this case all callbacks and subscription will be removed.
 
 or it can be not specified, in this case all callbacks and subscription will be removed.
 
@@ -235,34 +237,32 @@ Publish event to topic.
 
 Parameters:
 
-* topicURI - topic to publish to
-* payload - optional parameter, can be any value
-* callbacks - optional table of callbacks:
-
-    { 
-        onSuccess: will be called when publishing would be confirmed
-        onError:   will be called if publishing would be aborted with 2-4 parameters:
-                (Error|uri|string, Details|object[, Arguments|list, ArgumentsKw|dict])
-    }
-
-* advancedOptions - optional parameter. Must include any or all of the options:
-
-    { 
-        exclude: integer|array WAMP session id(s) that won't receive a published event,
+* **topicURI**. Required. A string that identifies the topic.
+Must meet a WAMP Spec URI requirements.
+* **payload**. Publishing event data. Optional. May be any single value or array or hash-table object or null. Also it
+is possible to pass array and object-like data simultaneously. In this case pass a hash-table with next attributes:
+    * **argsList**: array payload (may be omitted)
+    * **argsDict**: object payload (may be omitted)
+* **callbacks**. Optional hash table of callbacks:
+    * **onSuccess**: will be called when publishing would be confirmed
+    * **onError**: will be called if publishing would be aborted with one hash-table parameter with following attributes:
+        * **error**: string error description
+        * **details**: hash-table with some error details
+* **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
+    * **exclude**: integer|array WAMP session id(s) that won't receive a published event,
                  even though they may be subscribed
-        exclude_authid: string|array Authentication id(s) that won't receive
+    * **exclude_authid**: string|array Authentication id(s) that won't receive
                         a published event, even though they may be subscribed
-        exclude_authrole: string|array Authentication role(s) that won't receive
+    * **exclude_authrole**: string|array Authentication role(s) that won't receive
                           a published event, even though they may be subscribed
-        eligible: integer|array WAMP session id(s) that are allowed to receive a published event
-        eligible_authid: string|array Authentication id(s) that are allowed to receive a published event
-        eligible_authrole: string|array Authentication role(s) that are allowed
+    * **eligible**: integer|array WAMP session id(s) that are allowed to receive a published event
+    * **eligible_authid**: string|array Authentication id(s) that are allowed to receive a published event
+    * **eligible_authrole**: string|array Authentication role(s) that are allowed
                            to receive a published event
-        exclude_me: bool flag of receiving publishing event by initiator
+    * **exclude_me**: bool flag of receiving publishing event by initiator
                          (if it is subscribed to this topic)
-        disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
+    * **disclose_me**: bool flag of disclosure of publisher identity (its WAMP session ID)
                          to receivers of a published event 
-    }
 
 [Back to TOC](#table-of-contents)
 
@@ -273,26 +273,33 @@ Remote Procedure Call.
 
 Parameters:
 
-* topicURI - topic to call
-* payload - can be either a value of any type or nil
-* callbacks - if it is a function - it will be treated as result callback function or it can be hash table of callbacks:
-
-    { 
-        onSuccess: will be called with result on successful call with 2 parameters: 
-                        (Arguments|array, ArgumentsKw|object) 
-        onError: will be called if invocation would be aborted with 2-4 parameters:
-                      (Error|uri|string, Details|object[, Arguments|array, ArgumentsKw|object]) 
-    }
-
-* advancedOptions - optional parameter. Must include any or all of the options:
-
-    { 
-        disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
+* **topicURI**. Required. A string that identifies the remote procedure to be called.
+Must meet a WAMP Spec URI requirements.
+* **payload**. RPC data. Optional. May be any single value or array or hash-table object or null. Also it
+is possible to pass array and object-like data simultaneously. In this case pass a hash-table with next attributes:
+    * **argsList**: array payload (may be omitted)
+    * **argsDict**: object payload (may be omitted)
+* **callbacks**. If it is a function - it will be treated as result callback function
+             or it can be hash table of callbacks:
+    * **onSuccess**: will be called with result on successful call with one hash-table parameter with following attributes: 
+        * **details**: hash-table with some additional details
+        * **argsList**: optional array containing the original list of positional result
+                        elements as returned by the _Callee_
+        * **argsDict**: optional hash-table containing the original dictionary of keyword result
+                        elements as returned by the _Callee_  
+    * **onError**: will be called if invocation would be aborted with one hash-table parameter with following attributes:
+        * **error**: string error description
+        * **details**: hash-table with some error details
+        * **argsList**: optional array containing the original error payload list as returned 
+                        by the _Callee_ to the _Dealer_
+        * **argsDict**: optional hash-table containing the original error
+                        payload dictionary as returned by the _Callee_ to the _Dealer_
+* **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
+    * **disclose_me**: bool flag of disclosure of Caller identity (WAMP session ID)
                         to endpoints of a routed call
-        receive_progress: bool flag for receiving progressive results. In this case onSuccess function
+    * **receive_progress**: bool flag for receiving progressive results. In this case onSuccess function
                         will be called every time on receiving result
-        timeout: integer timeout (in ms) for the call to finish 
-    }
+    * **timeout**: integer timeout (in ms) for the call to finish 
 
 [Back to TOC](#table-of-contents)
 
@@ -303,20 +310,13 @@ RPC invocation cancelling.
 
 Parameters:
 
-* reqId - Request ID of RPC call that need to be canceled.
-* callbacks - optional parameter. If it is a function - it will be called if successfully sent canceling message
+* **reqId**. Required. Request ID of RPC call that need to be canceled.
+* **callbacks**. Optional. If it is a function - it will be called if successfully sent canceling message
             or it can be hash table of callbacks:
-
-    { 
-        onSuccess: will be called if successfully sent canceling message 
-        onError: will be called if some error occurred 
-    }
-
-* advancedOptions - optional parameter. Must include any or all of the options:
-
-    { 
-        mode: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default. 
-    }
+    * **onSuccess**: will be called if successfully sent canceling message 
+    * **onError**: will be called if some error occurred 
+* **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
+    * **mode**: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default. 
 
 [Back to TOC](#table-of-contents)
 
@@ -327,26 +327,31 @@ RPC registration for invocation.
 
 Parameters:
 
-* topicURI - topic to register
-* callbacks - if it is a function - it will be treated as rpc itself or it can be hash table of callbacks:
+* **topicURI**. Required. A string that identifies the remote procedure to be called.
+Must meet a WAMP Spec URI requirements.
+* **callbacks**. Required. If it is a function - it will be treated as rpc itself
+             or it can be hash table of callbacks:
+    * **rpc**: registered procedure
+    * **onSuccess**: will be called on successful registration
+    * **onError**: will be called if registration would be aborted with one hash-table parameter with following attributes:
+        * **error**: string error description
+        * **details**: hash-table with some error details
 
-    { 
-        rpc: registered procedure
-        onSuccess: will be called on successful registration
-        onError: will be called if registration would be aborted 
-    }
+Registered PRC during invocation will receive one hash-table argument with following attributes:
+ 
+* **argsList**: array payload (may be omitted)
+* **argsDict**: object payload (may be omitted)
+* **details**: some invocation options object. One attribute of interest in options is "receive_progress" (boolean), 
+which indicates, that caller is willing to receive progressive results, if possible. Another one is "trustlevel", which 
+indicates the call trust level, assigned by dealer (of course if it is configured accordingly).
 
-Registered PRC during invocation will receive three arguments: array payload (may be undefined), object payload 
-(may be undefined) and options object. One attribute of interest in options is "receive_progress" (boolean), 
-which indicates, that caller is willing to receive progressive results, if possible. Another one is "trustlevel", which  
-indicates the call trust level, assigned by dealer (of course if it is configured accordingly). RPC can return no result 
-(undefined), or it must return an array with 1, 2 or 3 elements:
+RPC can return no result (undefined), or it must return an object with next attributes:
 
-* \[1\] element must contain options object or {} if not needed. Possible attribute of options is "progress": true, which
+* **argsList**: array result or single value, (may be omitted)
+* **argsDict**: object result payload (may be omitted)
+* **options**: some result options object. Possible attribute of options is "progress": true, which
 indicates, that it's a progressive result, so there will be more results in future. Be sure to unset "progress"
-on last result message.
-* \[2\] element can contain array-like table result or single value (that will be converted to array with one element)
-* \[3\] element can contain object-like table result
+on last result message. 
 
 Also it is possible to abort rpc processing and throw error with custom application specific data. 
 This data will be passed to caller onError callback. 
