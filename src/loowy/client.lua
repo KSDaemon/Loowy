@@ -277,7 +277,7 @@ function _M.new(url, opts)
         local getdump = require("loowy.vardump").getdump
         if options.debug == true then
             local printResult = ''
-            for i, v in ipairs(args) do
+            for _, v in ipairs(args) do
                 printResult = printResult .. '[DEBUG] ' .. getdump(v) .. '\n'
             end
             print(printResult)
@@ -528,8 +528,8 @@ function _M.new(url, opts)
 
         subscriptions, subsTopics = {}, {}
 
-        for k, v in ipairs(st) do
-            for kk, vv in ipairs(subs[v].callbacks) do
+        for _, v in ipairs(st) do
+            for _, vv in ipairs(subs[v].callbacks) do
                 loowy:subscribe(v, vv)
             end
         end
@@ -543,7 +543,7 @@ function _M.new(url, opts)
 
         rpcRegs, rpcNames = {}, {}
 
-        for k, v in ipairs(rn) do
+        for _, v in ipairs(rn) do
             loowy:register(v, { rpc = rpcs[v].callbacks[1] })
         end
     end
@@ -554,11 +554,9 @@ function _M.new(url, opts)
     -- event - received data
     ---------------------------------------------------
     local function _wsOnMessage(event)
-        local data, id, i, d, result, msg;
-
         _log('websocket OnMessage event fired')
 
-        data = _decode(event);
+        local data = _decode(event);
 
         _log('Message received:', data)
         _log('WAMP message type is ' .. data[1])
@@ -638,7 +636,7 @@ function _M.new(url, opts)
                     requests[data[3]] = nil
                 end
 
-            elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
+            -- elseif data[2] == WAMP_MSG_SPEC.INVOCATION then
 
             elseif data[2] == WAMP_MSG_SPEC.CALL then
 
@@ -713,7 +711,7 @@ function _M.new(url, opts)
             --             Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
             if subscriptions[data[2]] then
 
-                for k, callback in ipairs(subscriptions[data[2]].callbacks) do
+                for _, callback in ipairs(subscriptions[data[2]].callbacks) do
                     callback({
                         details = data[4],
                         argsList = data[5],
