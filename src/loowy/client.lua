@@ -467,7 +467,7 @@ function _M.new(url, opts)
     ---------------------------------------------------
     -- Connection open callback
     ---------------------------------------------------
-    local function _wsOnOpen(wsProtocol, headers)
+    local function _wsOnOpen(wsProtocol)
         _log('websocket OnOpen event fired')
 
         if cache.timer ~= nil then
@@ -876,16 +876,16 @@ function _M.new(url, opts)
     -- Initialize internal callbacks
     ---------------------------------------------------
     local function _initWsCallbacks()
-        ws:on_open(function(wsObj, wsProtocol, headers)
+        ws:on_open(function(_, wsProtocol, headers)
             _wsOnOpen(wsProtocol, headers)
         end)
-        ws:on_close(function(ws, was_clean,code,reason)
+        ws:on_close(function() --ws, was_clean,code,reason
             _wsOnClose()
         end)
-        ws:on_message(function(ws, msg)
+        ws:on_message(function(_, msg)
             _wsOnMessage(msg)
         end)
-        ws:on_error(function(ws,err)
+        ws:on_error(function(_, err)
             if err ~= 'closed' then
                 _wsOnError(err)
             end
@@ -936,11 +936,11 @@ function _M.new(url, opts)
     -- To get options - call without parameters
     -- To set options - pass table with options values
     ---------------------------------------------------
-    function loowy:options(opts)
-        if opts == nil then
+    function loowy:options(newOpts)
+        if newOpts == nil then
             return options
         else
-            _tableMerge(options, opts)
+            _tableMerge(options, newOpts)
             _setWsProtocols()
         end
     end
@@ -970,9 +970,9 @@ function _M.new(url, opts)
     --
     -- url - WAMP Server url (optional)
     ---------------------------------------------------
-    function loowy:connect(url)
-        if url ~= nil then
-            cache.url = url
+    function loowy:connect(wampurl)
+        if wampurl ~= nil then
+            cache.url = wampurl
         end
 
         if options.realm then
@@ -1038,9 +1038,7 @@ function _M.new(url, opts)
 
         if type(callbacks) == 'function' then
             callbacks = { onEvent = callbacks }
-        elseif type(callbacks.onEvent) == 'function' then
-            -- nothing to do
-        else
+        elseif type(callbacks) ~= 'table' or type(callbacks.onEvent) ~= 'function' then
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then
@@ -1178,7 +1176,7 @@ function _M.new(url, opts)
     ----------------------------------------------------------------------------------------------------------------
     function loowy:publish(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
-        local options = {}
+        local publishOptions = {}
         local err = false
 
         if not _preReqChecks(topicURI, 'broker', callbacks) then
@@ -1186,16 +1184,16 @@ function _M.new(url, opts)
         end
 
         if type(callbacks) == 'table' then
-            options.acknowledge = true
+            publishOptions.acknowledge = true
         end
 
         if type(advancedOptions) == 'table' then
 
             if advancedOptions.exclude then
                 if type(advancedOptions.exclude) == 'table' then
-                    options.exclude = advancedOptions.exclude
+                    publishOptions.exclude = advancedOptions.exclude
                 elseif type(advancedOptions.exclude) == 'number' then
-                    options.exclude = { advancedOptions.exclude }
+                    publishOptions.exclude = { advancedOptions.exclude }
                 else
                     err = true
                 end
@@ -1203,9 +1201,9 @@ function _M.new(url, opts)
 
             if advancedOptions.exclude_authid then
                 if type(advancedOptions.exclude_authid) == 'table' then
-                    options.exclude_authid = advancedOptions.exclude_authid
+                    publishOptions.exclude_authid = advancedOptions.exclude_authid
                 elseif type(advancedOptions.exclude_authid) == 'string' then
-                    options.exclude_authid = { advancedOptions.exclude_authid }
+                    publishOptions.exclude_authid = { advancedOptions.exclude_authid }
                 else
                     err = true
                 end
@@ -1213,9 +1211,9 @@ function _M.new(url, opts)
 
             if advancedOptions.exclude_authrole then
                 if type(advancedOptions.exclude_authrole) == 'table' then
-                    options.exclude_authrole = advancedOptions.exclude_authrole
+                    publishOptions.exclude_authrole = advancedOptions.exclude_authrole
                 elseif type(advancedOptions.exclude_authrole) == 'string' then
-                    options.exclude_authrole = { advancedOptions.exclude_authrole }
+                    publishOptions.exclude_authrole = { advancedOptions.exclude_authrole }
                 else
                     err = true
                 end
@@ -1223,9 +1221,9 @@ function _M.new(url, opts)
 
             if advancedOptions.eligible then
                 if type(advancedOptions.eligible) == 'table' then
-                    options.eligible = advancedOptions.eligible
+                    publishOptions.eligible = advancedOptions.eligible
                 elseif type(advancedOptions.eligible) == 'number' then
-                    options.eligible = { advancedOptions.eligible }
+                    publishOptions.eligible = { advancedOptions.eligible }
                 else
                     err = true
                 end
@@ -1233,9 +1231,9 @@ function _M.new(url, opts)
 
             if advancedOptions.eligible_authid then
                 if type(advancedOptions.eligible_authid) == 'table' then
-                    options.eligible_authid = advancedOptions.eligible_authid
+                    publishOptions.eligible_authid = advancedOptions.eligible_authid
                 elseif type(advancedOptions.eligible_authid) == 'string' then
-                    options.eligible_authid = { advancedOptions.eligible_authid }
+                    publishOptions.eligible_authid = { advancedOptions.eligible_authid }
                 else
                     err = true
                 end
@@ -1243,22 +1241,22 @@ function _M.new(url, opts)
 
             if advancedOptions.eligible_authrole then
                 if type(advancedOptions.eligible_authrole) == 'table' then
-                    options.eligible_authrole = advancedOptions.eligible_authrole
+                    publishOptions.eligible_authrole = advancedOptions.eligible_authrole
                 elseif type(advancedOptions.eligible_authrole) == 'string' then
-                    options.eligible_authrole = { advancedOptions.eligible_authrole }
+                    publishOptions.eligible_authrole = { advancedOptions.eligible_authrole }
                 else
                     err = true
                 end
             end
 
             if type(advancedOptions.exclude_me) == 'boolean' then
-                options.exclude_me = advancedOptions.exclude_me ~= false
+                publishOptions.exclude_me = advancedOptions.exclude_me ~= false
             elseif advancedOptions.exclude_me ~= nil then
                 err = true
             end
 
             if type(advancedOptions.disclose_me) == 'boolean' then
-                options.disclose_me = advancedOptions.disclose_me == true
+                publishOptions.disclose_me = advancedOptions.disclose_me == true
             elseif advancedOptions.disclose_me ~= nil then
                 err = true
             end
@@ -1286,7 +1284,7 @@ function _M.new(url, opts)
 
 
         -- WAMP_SPEC: [PUBLISH, Request|id, Options|dict, Topic|uri(, Arguments|list (, ArgumentsKw|dict))]
-        msg = { WAMP_MSG_SPEC.PUBLISH, reqId, options, topicURI }
+        msg = { WAMP_MSG_SPEC.PUBLISH, reqId, publishOptions, topicURI }
 
         if payload ~= nil then
 
@@ -1353,7 +1351,7 @@ function _M.new(url, opts)
     --------------------------------------------------------------------------------------------------------------------
     function loowy:call(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
-        local options = {}
+        local callOptions = {}
         local err = false
 
         if not _preReqChecks(topicURI, 'dealer', callbacks) then
@@ -1362,9 +1360,7 @@ function _M.new(url, opts)
 
         if type(callbacks) == 'function' then
             callbacks = { onSuccess = callbacks }
-        elseif type(callbacks.onSuccess) == 'function' then
-            -- nothing to do
-        else
+        elseif type(callbacks) ~= 'table' or type(callbacks.onSuccess) ~= 'function' then
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then
@@ -1377,19 +1373,19 @@ function _M.new(url, opts)
         if type(advancedOptions) == 'table' then
 
             if type(advancedOptions.disclose_me) == 'boolean' then
-                options.disclose_me = advancedOptions.disclose_me == true
+                callOptions.disclose_me = advancedOptions.disclose_me == true
             elseif advancedOptions.disclose_me ~= nil then
                 err = true
             end
 
             if type(advancedOptions.receive_progress) == 'boolean' then
-                options.receive_progress = advancedOptions.receive_progress == true
+                callOptions.receive_progress = advancedOptions.receive_progress == true
             elseif advancedOptions.receive_progress ~= nil then
                 err = true
             end
 
             if type(advancedOptions.timeout) == 'number' then
-                options.timeout = advancedOptions.timeout
+                callOptions.timeout = advancedOptions.timeout
             elseif advancedOptions.timeout ~= nil then
                 err = true
             end
@@ -1414,7 +1410,7 @@ function _M.new(url, opts)
         calls[reqId] = callbacks
 
         -- WAMP SPEC: [CALL, Request|id, Options|dict, Procedure|uri, (Arguments|list, ArgumentsKw|dict)]
-        msg = { WAMP_MSG_SPEC.CALL, reqId, options, topicURI }
+        msg = { WAMP_MSG_SPEC.CALL, reqId, callOptions, topicURI }
 
         if payload ~= nil then
 
@@ -1468,7 +1464,7 @@ function _M.new(url, opts)
     --             }
     ------------------------------------------------------------------------------------------
     function loowy:cancel(reqId, callbacks, advancedOptions)
-        local options = { mode = 'skip' }
+        local cancelOptions = { mode = 'skip' }
 
         if not _preReqChecks(nil, 'dealer', callbacks) then
             return
@@ -1489,11 +1485,11 @@ function _M.new(url, opts)
             if string.find(advancedOptions.mode, '^skip$') or
                string.find(advancedOptions.mode, '^kill$') or
                string.find(advancedOptions.mode, '^killnowait$') then
-                options.mode = advancedOptions.mode
+                cancelOptions.mode = advancedOptions.mode
             end
         end
 
-        _send({ WAMP_MSG_SPEC.CANCEL, reqId, options })
+        _send({ WAMP_MSG_SPEC.CANCEL, reqId, cancelOptions })
         cache.opStatus = WAMP_ERROR_MSG.SUCCESS
         cache.opStatus.reqId = reqId;
 
@@ -1523,9 +1519,7 @@ function _M.new(url, opts)
 
         if type(callbacks) == 'function' then
             callbacks = { rpc = callbacks }
-        elseif type(callbacks.rpc) == 'function' then
-            -- nothing to do
-        else
+        elseif type(callbacks) ~= 'table' or type(callbacks.rpc) ~= 'function' then
             cache.opStatus = WAMP_ERROR_MSG.NO_CALLBACK_SPEC
 
             if type(callbacks.onError) == 'function' then

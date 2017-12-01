@@ -1,1 +1,3 @@
-ignore = { "212", "421", "431", "631" }
+color = true
+codes = true
+self = false

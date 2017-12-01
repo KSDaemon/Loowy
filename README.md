@@ -153,7 +153,7 @@ Get the WAMP Session ID.
 
 [Back to TOC](#table-of-contents)
 
-connect([url])
+connect([wampurl])
 ------------------------------------------
 
 Connect to WAMP router. 
