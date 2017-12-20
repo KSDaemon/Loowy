@@ -354,12 +354,23 @@ function _M.new(url, opts)
     -- Validate uri
     --
     -- uri - uri to validate
+    -- patternBased - allow wamp pattern based syntax or no
+    -- allowWAMP - allow wamp special prefixed uris or no
     -- @return boolean
     ---------------------------------------------------
-    local function _validateURI(uri)
-
+    local function _validateURI(uri, patternBased, allowWAMP)
         -- TODO create something like /^([0-9a-z_]+\.)*([0-9a-z_]+)$/
-        if string.find(uri, "^[0-9a-zA-Z_.]*[0-9a-zA-Z_]+$") == nil or string.find(uri, "wamp") == 1 then
+        local re = "^[0-9a-zA-Z_.]*[0-9a-zA-Z_]+$"
+        -- TODO create something like /^([0-9a-zA-Z_]+\.{1,2})*([0-9a-zA-Z_]+)$/;
+        local rePattern = "^[0-9a-zA-Z_.]*[0-9a-zA-Z_]+$"
+
+        if patternBased == true then
+            re = rePattern
+        end
+
+        if string.find(uri, re) == nil then
+            return false
+        elseif string.find(uri, "wamp.") == 1 and allowWAMP ~= true then
             return false
         else
             return true
@@ -369,12 +380,12 @@ function _M.new(url, opts)
     ---------------------------------------------------
     -- Prerequisite checks for any api call
     --
-    -- topicURI - string
+    -- topicType - object { topic = URI, patternBased = true|false, allowWAMP = true|false }
     -- role - string
     -- api call callbacks
     -- @return boolean
     ---------------------------------------------------
-    local function _preReqChecks(topicURI, role, callbacks)
+    local function _preReqChecks(topicType, role, callbacks)
         local flag = true
 
         if cache.sessionId and not cache.serverWampFeatures.roles[role] then
@@ -382,7 +393,7 @@ function _M.new(url, opts)
             flag = false
         end
 
-        if topicURI and not _validateURI(topicURI) then
+        if topicType ~= nil and not _validateURI(topicType.topic, topicType.patternBased, topicType.allowWAMP) then
             cache.opStatus = WAMP_ERROR_MSG.URI_ERROR
             flag = false
         end
@@ -1032,7 +1043,8 @@ function _M.new(url, opts)
     function loowy:subscribe(topicURI, callbacks)
         local reqId
 
-        if not _preReqChecks(topicURI, 'broker', callbacks) then
+        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = true },
+            'broker', callbacks) then
             return
         end
 
@@ -1179,7 +1191,8 @@ function _M.new(url, opts)
         local publishOptions = {}
         local err = false
 
-        if not _preReqChecks(topicURI, 'broker', callbacks) then
+        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = false },
+            'broker', callbacks) then
             return
         end
 
@@ -1354,7 +1367,8 @@ function _M.new(url, opts)
         local callOptions = {}
         local err = false
 
-        if not _preReqChecks(topicURI, 'dealer', callbacks) then
+        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = true },
+            'dealer', callbacks) then
             return
         end
 
@@ -1513,7 +1527,8 @@ function _M.new(url, opts)
     function loowy:register(topicURI, callbacks)
         local reqId
 
-        if not _preReqChecks(topicURI, 'dealer', callbacks) then
+        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = false },
+            'dealer', callbacks) then
             return
         end
 
@@ -1565,7 +1580,8 @@ function _M.new(url, opts)
     function loowy:unregister(topicURI, callbacks)
         local reqId
 
-        if not _preReqChecks(topicURI, 'dealer', callbacks) then
+        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = false },
+            'dealer', callbacks) then
             return
         end
 
