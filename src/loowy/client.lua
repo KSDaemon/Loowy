@@ -1568,19 +1568,54 @@ function _M.new(url, opts)
     --- @param advancedOptions table optional parameter. Must include any or all of the options:
     ---             {
     ---                 match: string matching policy ("prefix"|"wildcard")
+    ---                 invoke: string invocation policy ("single"|"roundrobin"|"random"|"first"|"last")
     ---             }
     ------------------------------------------------------------------------------------------
     function loowy:register(topicURI, callbacks, advancedOptions)
         local reqId
         local patternBased = false
         local registerOptions = {}
+        local err = false
 
-        if type(advancedOptions) == 'table' and type(advancedOptions.match) == 'string' then
+        if type(advancedOptions) == 'table' then
 
-            if string.find(advancedOptions.match, '^prefix$') or
-               string.find(advancedOptions.match, '^wildcard$') then
-                registerOptions.match = advancedOptions.match
-                patternBased = true
+            if type(advancedOptions.match) == 'string' then
+
+                if string.find(advancedOptions.mode, '^prefix$') or
+                        string.find(advancedOptions.mode, '^wildcard$') then
+                    registerOptions.match = advancedOptions.match
+                    patternBased = true
+                else
+                    err = true
+                end
+            else
+                err = true
+            end
+
+            if type(advancedOptions.invoke) == 'string' then
+
+                if string.find(advancedOptions.invoke, '^single$') or
+                        string.find(advancedOptions.invoke, '^roundrobin$') or
+                        string.find(advancedOptions.invoke, '^random$') or
+                        string.find(advancedOptions.invoke, '^first$') or
+                        string.find(advancedOptions.invoke, '^last$') then
+                    registerOptions.invoke = advancedOptions.invoke
+                else
+                    err = true
+                end
+            else
+                err = true
+            end
+
+            if err then
+
+                cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
+
+                if type(callbacks.onError) == 'function' then
+                    callbacks.onError({ error = cache.opStatus.description })
+                end
+
+                return
             end
         end
 
