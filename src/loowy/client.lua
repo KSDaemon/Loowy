@@ -13,7 +13,7 @@
 --local printdump = require("loowy.vardump").printdump
 
 local _M = {
-    _VERSION = '0.2.1'
+    _VERSION = '0.3.1'
 }
 
 -- _M.__index = _M -- I think no needed
@@ -34,6 +34,7 @@ local WAMP_FEATURES = {
         },
         subscriber = {
             features = {
+                pattern_based_subscription = true,
                 publication_trustlevels = true
             }
         },
@@ -48,7 +49,9 @@ local WAMP_FEATURES = {
         callee = {
             features = {
                 caller_identification = true,
-                call_trustlevels = true
+                call_trustlevels = true,
+                pattern_based_registration = true,
+                shared_registration = true
             }
         }
     }
