@@ -1501,7 +1501,8 @@ function _M.new(url, opts)
     ---             }
     ------------------------------------------------------------------------------------------
     function loowy:cancel(reqId, callbacks, advancedOptions)
-        local cancelOptions = { mode = 'skip' }
+        local cancelOptions = {}
+        local err = false
 
         if not _preReqChecks(nil, 'dealer', callbacks) then
             return
@@ -1517,12 +1518,30 @@ function _M.new(url, opts)
             return
         end
 
-        if type(advancedOptions) == 'table' and type(advancedOptions.mode) == 'string' then
+        if type(advancedOptions) == 'table' then
 
-            if string.find(advancedOptions.mode, '^skip$') or
-               string.find(advancedOptions.mode, '^kill$') or
-               string.find(advancedOptions.mode, '^killnowait$') then
-                cancelOptions.mode = advancedOptions.mode
+            if type(advancedOptions.mode) == 'string' then
+
+                if string.find(advancedOptions.mode, '^skip$') or
+                        string.find(advancedOptions.mode, '^kill$') or
+                        string.find(advancedOptions.mode, '^killnowait$') then
+                    cancelOptions.mode = advancedOptions.mode
+                else
+                    err = true
+                end
+            else
+                err = true
+            end
+
+            if err then
+
+                cache.opStatus = WAMP_ERROR_MSG.INVALID_PARAM
+
+                if type(callbacks.onError) == 'function' then
+                    callbacks.onError({ error = cache.opStatus.description })
+                end
+
+                return
             end
         end
 

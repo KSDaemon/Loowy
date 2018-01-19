@@ -186,7 +186,7 @@ TBD
 
 [Back to TOC](#table-of-contents)
 
-subscribe(topicURI, callbacks)
+subscribe(topicURI, callbacks[, advancedOptions])
 ------------------------------------------
 
 Subscribe to a topic on a broker.
@@ -322,7 +322,7 @@ Parameters:
 
 [Back to TOC](#table-of-contents)
 
-register(topicURI, callbacks)
+register(topicURI, callbacks[, advancedOptions])
 ------------------------------------------
 
 RPC registration for invocation.
@@ -340,6 +340,7 @@ Must meet a WAMP Spec URI requirements.
         * **details**: hash-table with some error details
 * **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
     * **match**: string matching policy ("prefix"|"wildcard")
+    * **invoke**: string invocation policy ("single"|"roundrobin"|"random"|"first"|"last")
 
 Registered PRC during invocation will receive one hash-table argument with following attributes:
  
