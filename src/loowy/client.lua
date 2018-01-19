@@ -1039,11 +1039,26 @@ function _M.new(url, opts)
     --                 onError: will be called if subscribe would be aborted
     --                 onEvent: will be called on receiving published event
     --             }
+    -- advancedOptions - optional parameter. Must include any or all of the options:
+    --             {
+    --                 match: string matching policy ("prefix"|"wildcard")
+    --             }
     -------------------------------------------------------------------------------------------
-    function loowy:subscribe(topicURI, callbacks)
+    function loowy:subscribe(topicURI, callbacks, advancedOptions)
         local reqId
+        local patternBased = false
+        local subscribeOptions = {}
 
-        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = true },
+        if type(advancedOptions) == 'table' and type(advancedOptions.match) == 'string' then
+
+            if string.find(advancedOptions.match, '^prefix$') or
+               string.find(advancedOptions.match, '^wildcard$') then
+                subscribeOptions.match = advancedOptions.match
+                patternBased = true
+            end
+        end
+
+        if not _preReqChecks({ topic = topicURI, patternBased = patternBased, allowWAMP = true },
             'broker', callbacks) then
             return
         end
@@ -1067,7 +1082,7 @@ function _M.new(url, opts)
             requests[reqId] = { topic = topicURI, callbacks = callbacks }
 
             -- WAMP SPEC: [SUBSCRIBE, Request|id, Options|dict, Topic|uri]
-            _send({ WAMP_MSG_SPEC.SUBSCRIBE, reqId, {}, topicURI })
+            _send({ WAMP_MSG_SPEC.SUBSCRIBE, reqId, subscribeOptions, topicURI })
 
         else    -- already have subscription to this topic
 
@@ -1523,11 +1538,26 @@ function _M.new(url, opts)
     --                 onSuccess: will be called on successful registration
     --                 onError: will be called if registration would be aborted
     --             }
+    -- advancedOptions - optional parameter. Must include any or all of the options:
+    --             {
+    --                 match: string matching policy ("prefix"|"wildcard")
+    --             }
     ------------------------------------------------------------------------------------------
-    function loowy:register(topicURI, callbacks)
+    function loowy:register(topicURI, callbacks, advancedOptions)
         local reqId
+        local patternBased = false
+        local registerOptions = {}
 
-        if not _preReqChecks({ topic = topicURI, patternBased = false, allowWAMP = false },
+        if type(advancedOptions) == 'table' and type(advancedOptions.match) == 'string' then
+
+            if string.find(advancedOptions.match, '^prefix$') or
+               string.find(advancedOptions.match, '^wildcard$') then
+                registerOptions.match = advancedOptions.match
+                patternBased = true
+            end
+        end
+
+        if not _preReqChecks({ topic = topicURI, patternBased = patternBased, allowWAMP = false },
             'dealer', callbacks) then
             return
         end
@@ -1551,7 +1581,7 @@ function _M.new(url, opts)
             requests[reqId] = { topic = topicURI, callbacks = callbacks }
 
             -- WAMP SPEC: [REGISTER, Request|id, Options|dict, Procedure|uri]
-            _send({ WAMP_MSG_SPEC.REGISTER, reqId, {}, topicURI })
+            _send({ WAMP_MSG_SPEC.REGISTER, reqId, registerOptions, topicURI })
             cache.opStatus = WAMP_ERROR_MSG.SUCCESS
             cache.opStatus.reqId = reqId;
 
