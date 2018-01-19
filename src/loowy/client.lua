@@ -102,10 +102,10 @@ local WAMP_ERROR_MSG = {
 }
 
 ---------------------------------------------------
--- Create a new Loowy instance
---
--- url - WAMP router url (optional)
--- opts - Configuration options (optional)
+--- Create a new Loowy instance
+---
+--- @param url string WAMP router url (optional)
+--- @param opts table Configuration options (optional)
 ---------------------------------------------------
 function _M.new(url, opts)
     -- local loowy = setmetatable({}, Loowy)
@@ -270,7 +270,7 @@ function _M.new(url, opts)
     local _wsReconnect
 
     ---------------------------------------------------
-    -- Internal logging
+    --- Internal logging
     ---------------------------------------------------
     local function _log(...)
         local args={... }
@@ -285,11 +285,11 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Return index of obj in array t
-    --
-    -- t - array table
-    -- obj - object to search
-    -- @return index of obj or -1 if not found
+    --- Return index of obj in array t
+    ---
+    --- @param t table array table
+    --- @param obj any object to search
+    --- @return number index of obj or -1 if not found
     ---------------------------------------------------
     local function _arrayIndexOf(t, obj)
         if type(t) == 'table' then
@@ -306,11 +306,11 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Merge two tables
-    --
-    -- dest - Destination table
-    -- source - Source table
-    -- @return merged table
+    --- Merge two tables
+    ---
+    --- @param dest table Destination table
+    --- @param source table Source table
+    --- @return table merged table
     ---------------------------------------------------
     local function _tableMerge(dest, source)
         if type(source) == "table" then
@@ -329,7 +329,9 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Get the new unique request id
+    --- Get the new unique request id
+    ---
+    --- @return number unique request id
     ---------------------------------------------------
     local function _getReqId()
         cache.reqId = cache.reqId + 1
@@ -337,7 +339,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Set websocket protocols based on options
+    --- Set websocket protocols based on options
     ---------------------------------------------------
     local function _setWsProtocols()
         local te = 'wamp.2.' .. options.transportEncoding
@@ -351,12 +353,12 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Validate uri
-    --
-    -- uri - uri to validate
-    -- patternBased - allow wamp pattern based syntax or no
-    -- allowWAMP - allow wamp special prefixed uris or no
-    -- @return boolean
+    --- Validate uri
+    ---
+    --- @param uri string uri to validate
+    --- @param patternBased boolean allow wamp pattern based syntax or no
+    --- @param allowWAMP boolean allow wamp special prefixed uris or no
+    --- @return boolean if uri valid?
     ---------------------------------------------------
     local function _validateURI(uri, patternBased, allowWAMP)
         -- TODO create something like /^([0-9a-z_]+\.)*([0-9a-z_]+)$/
@@ -378,12 +380,12 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Prerequisite checks for any api call
-    --
-    -- topicType - object { topic = URI, patternBased = true|false, allowWAMP = true|false }
-    -- role - string
-    -- api call callbacks
-    -- @return boolean
+    --- Prerequisite checks for any api call
+    ---
+    --- @param topicType table object { topic = URI, patternBased = true|false, allowWAMP = true|false }
+    --- @param role string
+    --- @param callbacks table api call callbacks
+    --- @return boolean
     ---------------------------------------------------
     local function _preReqChecks(topicType, role, callbacks)
         local flag = true
@@ -409,29 +411,29 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Encode WAMP message
-    --
-    -- msg - message to encode
-    -- @return encoder specific encoded message
+    --- Encode WAMP message
+    ---
+    --- @param msg any message to encode
+    --- @return any encoder specific encoded message
     ---------------------------------------------------
     local function _encode(msg)
         return serializer.encode(msg)
     end
 
     ---------------------------------------------------
-    -- Decode WAMP message
-    --
-    -- msg - message to decode
-    -- @return encoder specific decoded message
+    --- Decode WAMP message
+    ---
+    --- @param msg any message to decode
+    --- @return any encoder specific decoded message
     ---------------------------------------------------
     local function _decode(msg)
         return serializer.decode(msg)
     end
 
     ---------------------------------------------------
-    -- Send encoded message to server
-    --
-    -- msg - message to send
+    --- Send encoded message to server
+    ---
+    --- @param msg any message to send
     ---------------------------------------------------
     local function _send(msg)
         if msg ~= nil then
@@ -447,7 +449,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Reset internal state and cache
+    --- Reset internal state and cache
     ---------------------------------------------------
     local function _resetState()
         wsQueue = {}
@@ -476,7 +478,9 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Connection open callback
+    --- Connection open callback
+    ---
+    --- @param wsProtocol string Server choosen websocket subprotocol
     ---------------------------------------------------
     local function _wsOnOpen(wsProtocol)
         _log('websocket OnOpen event fired')
@@ -509,7 +513,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Connection close callback
+    --- Connection close callback
     ---------------------------------------------------
     local function _wsOnClose()
         _log('websocket OnClose event fired')
@@ -532,7 +536,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Renew subscriptions after reconnection to WAMP server
+    --- Renew subscriptions after reconnection to WAMP server
     ---------------------------------------------------
     local function _renewSubscriptions()
         local subs, st = subscriptions, subsTopics
@@ -547,7 +551,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Renew RPC registrations after reconnection to WAMP server
+    --- Renew RPC registrations after reconnection to WAMP server
     ---------------------------------------------------
     local function _renewRegistrations()
         local rpcs, rn = rpcRegs, rpcNames
@@ -560,9 +564,9 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Connection message callback
-    --
-    -- event - received data
+    --- Connection message callback
+    ---
+    --- @param event any received data
     ---------------------------------------------------
     local function _wsOnMessage(event)
         _log('websocket OnMessage event fired')
@@ -871,9 +875,9 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Connection error callback
-    --
-    -- error - received error
+    --- Connection error callback
+    ---
+    --- @param error any received error
     ---------------------------------------------------
     local function _wsOnError(error)
         _log('websocket OnError event fired with error: ' .. error)
@@ -884,7 +888,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Initialize internal callbacks
+    --- Initialize internal callbacks
     ---------------------------------------------------
     local function _initWsCallbacks()
         ws:on_open(function(_, wsProtocol, headers)
@@ -904,7 +908,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Reconnection to WAMP server
+    --- Reconnection to WAMP server
     ---------------------------------------------------
     _wsReconnect = function ()
         _log('Reconnecting to websocket... Attempt No ' .. cache.reconnectingAttempts)
@@ -942,10 +946,12 @@ function _M.new(url, opts)
     ---------------------------------------------------
 
     ---------------------------------------------------
-    -- Get or set options
-    --
-    -- To get options - call without parameters
-    -- To set options - pass table with options values
+    --- Get or set options
+    ---
+    --- To get options - call without parameters
+    --- To set options - pass table with options values
+    --- @param newOpts table Hash-table with new options (optional)
+    --- @return table without argument returns current options
     ---------------------------------------------------
     function loowy:options(newOpts)
         if newOpts == nil then
@@ -957,29 +963,31 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Get the status of last operation
-    --
-    -- @return {code, description}
-    --          code: 0 - if operation was successful
-    --          code > 0 - if error occurred
-    --          description contains details about error
-    --          reqId: last send request ID
+    --- Get the status of last operation
+    ---
+    --- @return table { code, description }
+    ---          code: 0 - if operation was successful
+    ---          code > 0 - if error occurred
+    ---          description contains details about error
+    ---          reqId: last send request ID
     ---------------------------------------------------
     function loowy:getOpStatus()
         return cache.opStatus
     end
 
     ---------------------------------------------------
-    -- Get the WAMP Session ID
+    --- Get the WAMP Session ID
+    ---
+    --- @return number session ID
     ---------------------------------------------------
     function loowy:getSessionId()
         return cache.sessionId
     end
 
     ---------------------------------------------------
-    -- Connect to server
-    --
-    -- url - WAMP Server url (optional)
+    --- Connect to server
+    ---
+    --- @param wampurl string WAMP Server url (optional)
     ---------------------------------------------------
     function loowy:connect(wampurl)
         if wampurl ~= nil then
@@ -996,7 +1004,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Disconnect from server
+    --- Disconnect from server
     ---------------------------------------------------
     function loowy:disconnect()
         if cache.sessionId ~= nil then
@@ -1013,7 +1021,7 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------
-    -- Abort WAMP session establishment
+    --- Abort WAMP session establishment
     ---------------------------------------------------
     function loowy:abort()
         if not cache.sessionId and ws.state == 'OPEN' then
@@ -1029,20 +1037,20 @@ function _M.new(url, opts)
     end
 
     -------------------------------------------------------------------------------------------
-    -- Subscribe to a topic on a broker
-    --
-    -- topicURI - topic to subscribe
-    -- callbacks - if it is a function - it will be treated as published event callback
-    --             or it can be hash table of callbacks:
-    --             {
-    --                 onSuccess: will be called when subscribe would be confirmed
-    --                 onError: will be called if subscribe would be aborted
-    --                 onEvent: will be called on receiving published event
-    --             }
-    -- advancedOptions - optional parameter. Must include any or all of the options:
-    --             {
-    --                 match: string matching policy ("prefix"|"wildcard")
-    --             }
+    --- Subscribe to a topic on a broker
+    ---
+    --- @param topicURI string topic to subscribe
+    --- @param callbacks function|table if it is a function - it will be treated as published event callback
+    ---             or it can be hash table of callbacks:
+    ---             {
+    ---                 onSuccess: will be called when subscribe would be confirmed
+    ---                 onError: will be called if subscribe would be aborted
+    ---                 onEvent: will be called on receiving published event
+    ---             }
+    --- @param advancedOptions table optional parameter. Must include any or all of the options:
+    ---             {
+    ---                 match: string matching policy ("prefix"|"wildcard")
+    ---             }
     -------------------------------------------------------------------------------------------
     function loowy:subscribe(topicURI, callbacks, advancedOptions)
         local reqId
@@ -1102,16 +1110,16 @@ function _M.new(url, opts)
     end
 
     ---------------------------------------------------------------------------------------------
-    -- Unsubscribe from topic
-    --
-    -- topicURI - topic to unsubscribe
-    -- callbacks - if it is a function - it will be treated as
-    --             published event callback to remove or it can be hash table of callbacks:
-    --             {
-    --                 onSuccess: will be called when unsubscribe would be confirmed
-    --                 onError: will be called if unsubscribe would be aborted
-    --                 onEvent: published event callback to remove (and allow others
-    --             }
+    --- Unsubscribe from topic
+    ---
+    --- @param topicURI string topic to unsubscribe
+    --- @param callbacks function|table if it is a function - it will be treated as
+    ---             published event callback to remove or it can be hash table of callbacks:
+    ---             {
+    ---                 onSuccess: will be called when unsubscribe would be confirmed
+    ---                 onError: will be called if unsubscribe would be aborted
+    ---                 onEvent: published event callback to remove (and allow others
+    ---             }
     ---------------------------------------------------------------------------------------------
     function loowy:unsubscribe(topicURI, callbacks)
         local reqId
@@ -1167,39 +1175,39 @@ function _M.new(url, opts)
     end
 
     ----------------------------------------------------------------------------------------------------------------
-    -- Publish a event to topic
-    --
-    -- topicURI - topic to publish
-    -- payload - optional parameter, can be either a value of any type or null.  Also it is possible
-    --           to pass array and object-like data simultaneously.
-    --           In this case pass a  table with next attributes:
-    --           {
-    --              argsList: array payload (may be omitted)
-    --              argsDict: object payload (may be omitted)
-    --           }
-    -- callbacks - optional table of callbacks:
-    --           {
-    --              onSuccess: will be called when publishing would be confirmed
-    --              onError: will be called if publishing would be aborted
-    --           }
-    -- advancedOptions - optional parameter. Must include any or all of the options:
-    --           {
-    --              exclude: integer|array WAMP session id(s) that won't receive a published event,
-    --                                     even though they may be subscribed
-    --              exclude_authid: string|array Authentication id(s) that won't receive
-    --                                     a published event, even though they may be subscribed
-    --              exclude_authrole: string|array Authentication role(s) that won't receive
-    --                                     a published event, even though they may be subscribed
-    --              eligible: integer|array WAMP session id(s) that are allowed
-    --                                     to receive a published event
-    --              eligible_authid: string|array Authentication id(s) that are allowed
-    --                                     to receive a published event
-    --              eligible_authrole: string|array Authentication role(s) that are allowed
-    --                                     to receive a published event
-    --              exclude_me: bool flag of receiving publishing event by initiator
-    --              disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
-    --                                     to receivers of a published event
-    --           }
+    --- Publish a event to topic
+    ---
+    --- @param topicURI string topic to publish
+    --- @param payload any optional parameter, can be either a value of any type or null.  Also it is possible
+    ---           to pass array and object-like data simultaneously.
+    ---           In this case pass a  table with next attributes:
+    ---           {
+    ---              argsList: array payload (may be omitted)
+    ---              argsDict: object payload (may be omitted)
+    ---           }
+    --- @param callbacks table optional table of callbacks:
+    ---           {
+    ---              onSuccess: will be called when publishing would be confirmed
+    ---              onError: will be called if publishing would be aborted
+    ---           }
+    --- @param advancedOptions table optional parameter. Must include any or all of the options:
+    ---           {
+    ---              exclude: integer|array WAMP session id(s) that won't receive a published event,
+    ---                                     even though they may be subscribed
+    ---              exclude_authid: string|array Authentication id(s) that won't receive
+    ---                                     a published event, even though they may be subscribed
+    ---              exclude_authrole: string|array Authentication role(s) that won't receive
+    ---                                     a published event, even though they may be subscribed
+    ---              eligible: integer|array WAMP session id(s) that are allowed
+    ---                                     to receive a published event
+    ---              eligible_authid: string|array Authentication id(s) that are allowed
+    ---                                     to receive a published event
+    ---              eligible_authrole: string|array Authentication role(s) that are allowed
+    ---                                     to receive a published event
+    ---              exclude_me: bool flag of receiving publishing event by initiator
+    ---              disclose_me: bool flag of disclosure of publisher identity (its WAMP session ID)
+    ---                                     to receivers of a published event
+    ---           }
     ----------------------------------------------------------------------------------------------------------------
     function loowy:publish(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
@@ -1352,30 +1360,30 @@ function _M.new(url, opts)
     end
 
     --------------------------------------------------------------------------------------------------------------------
-    -- Remote Procedure Call
-    --
-    -- topicURI - topic to call
-    -- payload - optional parameter, can be either a value of any type or null.  Also it is possible
-    --           to pass array and object-like data simultaneously.
-    --           In this case pass a  table with next attributes:
-    --           {
-    --              argsList: array payload (may be omitted)
-    --              argsDict: object payload (may be omitted)
-    --           }
-    -- callbacks - if it is a function - it will be treated as result callback function
-    --                     or it can be hash table of callbacks:
-    --           {
-    --               onSuccess: will be called with result on successful call
-    --               onError: will be called if invocation would be aborted
-    --           }
-    -- advancedOptions - optional parameter. Must include any or all of the options:
-    --           {
-    --               disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
-    --                                  to endpoints of a routed call
-    --               receive_progress: bool flag for receiving progressive results. In this case
-    --                                  onSuccess function will be called every time on receiving result
-    --               timeout: integer timeout (in seconds) for the call to finish
-    --           }
+    --- Remote Procedure Call
+    ---
+    --- @param topicURI string topic to call
+    --- @param payload any optional parameter, can be either a value of any type or null.  Also it is possible
+    ---           to pass array and object-like data simultaneously.
+    ---           In this case pass a  table with next attributes:
+    ---           {
+    ---              argsList: array payload (may be omitted)
+    ---              argsDict: object payload (may be omitted)
+    ---           }
+    --- @param callbacks function|table if it is a function - it will be treated as result callback function
+    ---                     or it can be hash table of callbacks:
+    ---           {
+    ---               onSuccess: will be called with result on successful call
+    ---               onError: will be called if invocation would be aborted
+    ---           }
+    --- @param advancedOptions table optional parameter. Must include any or all of the options:
+    ---           {
+    ---               disclose_me: bool flag of disclosure of Caller identity (WAMP session ID)
+    ---                                  to endpoints of a routed call
+    ---               receive_progress: bool flag for receiving progressive results. In this case
+    ---                                  onSuccess function will be called every time on receiving result
+    ---               timeout: integer timeout (in seconds) for the call to finish
+    ---           }
     --------------------------------------------------------------------------------------------------------------------
     function loowy:call(topicURI, payload, callbacks, advancedOptions)
         local reqId, msg
@@ -1478,19 +1486,19 @@ function _M.new(url, opts)
     end
 
     ------------------------------------------------------------------------------------------
-    -- RPC invocation cancelling
-    --
-    -- reqId - RPC call request ID
-    -- callbacks - if it is a function - it will be called if successfully
-    --             sent canceling message or it can be hash table of callbacks:
-    --             {
-    --                 onSuccess: will be called if successfully sent canceling message
-    --                 onError: will be called if some error occurred
-    --             }
-    -- advancedOptions - optional parameter. Must include any or all of the options:
-    --             {
-    --                 mode: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default
-    --             }
+    --- RPC invocation cancelling
+    ---
+    --- @param reqId number RPC call request ID
+    --- @param callbacks function|table if it is a function - it will be called if successfully
+    ---             sent canceling message or it can be hash table of callbacks:
+    ---             {
+    ---                 onSuccess: will be called if successfully sent canceling message
+    ---                 onError: will be called if some error occurred
+    ---             }
+    --- @param advancedOptions table optional parameter. Must include any or all of the options:
+    ---             {
+    ---                 mode: string|one of the possible modes: "skip" | "kill" | "killnowait". Skip is default
+    ---             }
     ------------------------------------------------------------------------------------------
     function loowy:cancel(reqId, callbacks, advancedOptions)
         local cancelOptions = { mode = 'skip' }
@@ -1528,20 +1536,20 @@ function _M.new(url, opts)
     end
 
     ------------------------------------------------------------------------------------------
-    -- RPC registration for invocation
-    --
-    -- topicURI - topic to register
-    -- callbacks - if it is a function - it will be treated as rpc itself
-    --             or it can be hash table of callbacks:
-    --             {
-    --                 rpc: registered procedure
-    --                 onSuccess: will be called on successful registration
-    --                 onError: will be called if registration would be aborted
-    --             }
-    -- advancedOptions - optional parameter. Must include any or all of the options:
-    --             {
-    --                 match: string matching policy ("prefix"|"wildcard")
-    --             }
+    --- RPC registration for invocation
+    ---
+    --- @param topicURI string topic to register
+    --- @param callbacks function|table if it is a function - it will be treated as rpc itself
+    ---             or it can be hash table of callbacks:
+    ---             {
+    ---                 rpc: registered procedure
+    ---                 onSuccess: will be called on successful registration
+    ---                 onError: will be called if registration would be aborted
+    ---             }
+    --- @param advancedOptions table optional parameter. Must include any or all of the options:
+    ---             {
+    ---                 match: string matching policy ("prefix"|"wildcard")
+    ---             }
     ------------------------------------------------------------------------------------------
     function loowy:register(topicURI, callbacks, advancedOptions)
         local reqId
@@ -1597,15 +1605,15 @@ function _M.new(url, opts)
     end
 
     -------------------------------------------------------------------------------------------
-    -- RPC unregistration for invocation
-    --
-    -- topicURI - topic to unregister
-    -- callbacks - if it is a function, it will be called on successful unregistration
-    --             or it can be hash table of callbacks:
-    --             {
-    --                 onSuccess: will be called on successful unregistration
-    --                 onError: will be called if unregistration would be aborted
-    --             }
+    --- RPC unregistration for invocation
+    ---
+    --- @param topicURI string topic to unregister
+    --- @param callbacks function|table if it is a function, it will be called on successful unregistration
+    ---             or it can be hash table of callbacks:
+    ---             {
+    ---                 onSuccess: will be called on successful unregistration
+    ---                 onError: will be called if unregistration would be aborted
+    ---             }
     -------------------------------------------------------------------------------------------
     function loowy:unregister(topicURI, callbacks)
         local reqId
