@@ -41,8 +41,8 @@ Loowy supports next WAMP roles and features:
     * publisher exclusion
     * publisher identification
 * subscriber:
-    * pattern_based_subscription
-    * publication trustlevels
+    * pattern-based subscription
+    * publication trust levels
 * caller:
     * caller identification
     * progressive call results
@@ -50,9 +50,9 @@ Loowy supports next WAMP roles and features:
     * call timeout
 * callee:
     * caller identification
-    * call trustlevels
-    * pattern_based_registration
-    * shared_registration
+    * call trust levels
+    * pattern-based registration
+    * shared registration
 
 Loowy supports JSON and msgpack serializers.
 
