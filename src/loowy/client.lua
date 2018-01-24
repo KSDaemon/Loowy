@@ -361,7 +361,7 @@ function _M.new(url, opts)
     --- @param uri string uri to validate
     --- @param patternBased boolean allow wamp pattern based syntax or no
     --- @param allowWAMP boolean allow wamp special prefixed uris or no
-    --- @return boolean if uri valid?
+    --- @return boolean is uri valid?
     ---------------------------------------------------
     local function _validateURI(uri, patternBased, allowWAMP)
         -- TODO create something like /^([0-9a-z_]+\.)*([0-9a-z_]+)$/
