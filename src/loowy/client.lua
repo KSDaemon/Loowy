@@ -614,7 +614,26 @@ function _M.new(url, opts)
 
         elseif data[1] == WAMP_MSG_SPEC.CHALLENGE then
             -- WAMP SPEC: [CHALLENGE, AuthMethod|string, Extra|dict]
-            -- TODO implement CRA
+            if (options.authid ~= nil and type(options.onChallenge) == 'function') then
+
+
+
+            else
+                local msg = {
+                    WAMP_MSG_SPEC.ABORT,
+                    { message = WAMP_ERROR_MSG.NO_CRA_CB_OR_ID.description } ,
+                    'wamp.error.cannot_authenticate'
+                }
+                ws:send(_encode(msg), options.transportType)
+
+                if type(options.onError) == 'function' then
+                    options.onError({ error = WAMP_ERROR_MSG.NO_CRA_CB_OR_ID.description })
+                end
+
+                ws:close()
+                ws = nil
+                cache.opStatus = WAMP_ERROR_MSG.NO_CRA_CB_OR_ID;
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.GOODBYE then
             -- WAMP SPEC: [GOODBYE, Details|dict, Reason|uri]
