@@ -111,7 +111,6 @@ local WAMP_ERROR_MSG = {
 --- @param opts table Configuration options (optional)
 ---------------------------------------------------
 function _M.new(url, opts)
-    -- local loowy = setmetatable({}, Loowy)
     local loowy = {}
 
     ---------------------------------------------------
@@ -1582,32 +1581,36 @@ function _M.new(url, opts)
 
         if type(advancedOptions) == 'table' then
 
-            if type(advancedOptions.match) == 'string' then
+            if advancedOptions.match ~= nil then
+                if type(advancedOptions.match) == 'string' then
 
-                if string.find(advancedOptions.mode, '^prefix$') or
-                        string.find(advancedOptions.mode, '^wildcard$') then
-                    registerOptions.match = advancedOptions.match
-                    patternBased = true
+                    if string.find(advancedOptions.match, '^prefix$') or
+                            string.find(advancedOptions.match, '^wildcard$') then
+                        registerOptions.match = advancedOptions.match
+                        patternBased = true
+                    else
+                        err = true
+                    end
                 else
                     err = true
                 end
-            else
-                err = true
             end
 
-            if type(advancedOptions.invoke) == 'string' then
+            if advancedOptions.invoke ~= nil then
+                if type(advancedOptions.invoke) == 'string' then
 
-                if string.find(advancedOptions.invoke, '^single$') or
-                        string.find(advancedOptions.invoke, '^roundrobin$') or
-                        string.find(advancedOptions.invoke, '^random$') or
-                        string.find(advancedOptions.invoke, '^first$') or
-                        string.find(advancedOptions.invoke, '^last$') then
-                    registerOptions.invoke = advancedOptions.invoke
+                    if string.find(advancedOptions.invoke, '^single$') or
+                            string.find(advancedOptions.invoke, '^roundrobin$') or
+                            string.find(advancedOptions.invoke, '^random$') or
+                            string.find(advancedOptions.invoke, '^first$') or
+                            string.find(advancedOptions.invoke, '^last$') then
+                        registerOptions.invoke = advancedOptions.invoke
+                    else
+                        err = true
+                    end
                 else
                     err = true
                 end
-            else
-                err = true
             end
 
             if err then
