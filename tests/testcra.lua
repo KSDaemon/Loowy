@@ -33,7 +33,6 @@ local client1
 print('Connecting client to WAMP Server: ' .. wsServer)
 
 client1 = loowy.new(wsServer, {
-    transportEncoding = 'json',
     realm = config.realm,
     authid = 'user1',
     authmethods = { 'wampcra' },

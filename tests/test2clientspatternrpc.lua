@@ -94,7 +94,6 @@ client1 = loowy.new(wsServer, {
 })
 
 client2 = loowy.new(wsServer, {
-    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,

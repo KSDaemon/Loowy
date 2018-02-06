@@ -33,7 +33,6 @@ local client1, client2
 print('Connecting clients to WAMP Server: ' .. wsServer)
 
 client1 = loowy.new(wsServer, {
-    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,

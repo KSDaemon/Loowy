@@ -34,7 +34,6 @@ local firstDisconnect = true
 print('Connecting client to WAMP Server: ' .. wsServer)
 
 client1 = loowy.new(wsServer, {
-    transportEncoding = 'json',
     realm = config.realm,
     maxRetries = config.maxRetries,
     transportEncoding = config.transportEncoding,
