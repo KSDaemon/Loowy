@@ -184,7 +184,24 @@ but WAMP session establishment is in progress.
 Challenge Response Authentication
 ------------------------------------------
 
-TBD
+Loowy supports challenge response authentication. To use it you need to provide authid and onChallenge callback
+as instance options. See example below:
+
+```lua
+local loowy = require 'loowy.client'
+
+local client = loowy.new("ws://ws.wamp.server.url", {
+    transportEncoding = 'json',
+    realm = 'AppRealm',
+    authid = 'user1',
+    authmethods = { 'wampcra' },
+    onChallenge = function (method, info)
+        local hmac = require "resty.hmac"
+        local hm = hmac:new("secret1")
+        return hm:generate_signature("sha256", info.challenge)
+    end
+})
+```
 
 [Back to TOC](#table-of-contents)
 
