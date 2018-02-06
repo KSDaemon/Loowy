@@ -616,8 +616,26 @@ function _M.new(url, opts)
             -- WAMP SPEC: [CHALLENGE, AuthMethod|string, Extra|dict]
             if (options.authid ~= nil and type(options.onChallenge) == 'function') then
 
+                local status, result = pcall(options.onChallenge, data[2], data[3])
+                if status then
+                    local msg = { WAMP_MSG_SPEC.AUTHENTICATE, result, {}}
+                    ws:send(_encode(msg), options.transportType)
+                else
+                    local msg = {
+                        WAMP_MSG_SPEC.ABORT,
+                        { message = 'Exception in onChallenge handler raised!' } ,
+                        'wamp.error.cannot_authenticate'
+                    }
+                    ws:send(_encode(msg), options.transportType)
 
+                    if type(options.onError) == 'function' then
+                        options.onError({ error = WAMP_ERROR_MSG.CRA_EXCEPTION.description })
+                    end
 
+                    ws:close()
+                    ws = nil
+                    cache.opStatus = WAMP_ERROR_MSG.CRA_EXCEPTION;
+                end
             else
                 local msg = {
                     WAMP_MSG_SPEC.ABORT,
