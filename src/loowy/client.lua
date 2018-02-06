@@ -13,7 +13,7 @@
 --local printdump = require("loowy.vardump").printdump
 
 local _M = {
-    _VERSION = '0.3.1'
+    _VERSION = '0.4.0'
 }
 
 -- _M.__index = _M -- I think no needed
