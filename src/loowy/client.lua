@@ -659,7 +659,7 @@ function _M.new(url, opts)
             if not cache.isSayingGoodbye then
                 -- get goodbye, initiated by server
                 cache.isSayingGoodbye = true
-                _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.error.goodbye_and_out' })
+                _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.close.goodbye_and_out' })
             end
 
             cache.sessionId = nil
@@ -1049,7 +1049,7 @@ function _M.new(url, opts)
         if cache.sessionId ~= nil then
             -- need to send goodbye message to server
             cache.isSayingGoodbye = true
-            _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.error.system_shutdown' })
+            _send({ WAMP_MSG_SPEC.GOODBYE, {}, 'wamp.close.system_shutdown' })
         elseif ws ~= nil then
             ws:close()
             ws = nil
