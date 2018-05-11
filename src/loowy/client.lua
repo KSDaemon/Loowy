@@ -150,6 +150,9 @@ function _M.new(url, opts)
             reqId = 0
         },
 
+        -- event loop for timers and etc
+        eventLoop = nil,
+
         -- Timer for reconnection
         timer = nil,
 
@@ -222,6 +225,10 @@ function _M.new(url, opts)
         -- WAMP Realm to join
         -- @type string
         realm = nil,
+
+        -- User provided event loop
+        -- @type object
+        eventLoop = nil,
 
         -- Custom attributes to send to router on hello
         -- @type object
@@ -488,8 +495,7 @@ function _M.new(url, opts)
         _log('websocket OnOpen event fired')
 
         if cache.timer ~= nil then
-            local ev = require 'ev'
-            cache.timer:stop(ev.Loop.default)
+            cache.timer:stop(cache.eventLoop)
             cache.timer = nil
         end
 
@@ -525,7 +531,7 @@ function _M.new(url, opts)
             cache.sessionId = nil
             local ev = require 'ev'
             cache.timer = ev.Timer.new(_wsReconnect, options.reconnectInterval, options.reconnectInterval)
-            cache.timer:start(ev.Loop.default)
+            cache.timer:start(cache.eventLoop)
         else
             _resetState()
             ws = nil
@@ -609,8 +615,10 @@ function _M.new(url, opts)
                 options.onError({ error = data[3], details = data[2] })
             end
 
-            ws:close()
-            ws = nil
+            if ws then
+                ws:close()
+                ws = nil
+            end
 
         elseif data[1] == WAMP_MSG_SPEC.CHALLENGE then
             -- WAMP SPEC: [CHALLENGE, AuthMethod|string, Extra|dict]
@@ -954,7 +962,6 @@ function _M.new(url, opts)
 
         if cache.reconnectingAttempts >= options.maxRetries then
             if cache.timer ~= nil then
-                local ev = require 'ev'
                 cache.timer:stop(ev.Loop.default)
                 cache.timer = nil
             end
@@ -1034,7 +1041,7 @@ function _M.new(url, opts)
         end
 
         if options.realm then
-            ws = require('websocket.client').ev()
+            ws = require('websocket.client').ev({ loop = cache.eventLoop })
             ws:connect(cache.url, cache.protocols)
             _initWsCallbacks()
         else
@@ -1752,6 +1759,13 @@ function _M.new(url, opts)
         -- Merging user options
         _tableMerge(options, opts)
         _setWsProtocols()
+    end
+
+    if options.eventLoop then
+        cache.eventLoop = options.eventLoop
+    else
+        local ev = require 'ev'
+        cache.eventLoop = ev.Loop.default
     end
 
     if url ~= nil then
