@@ -1,9 +1,9 @@
 package = "Loowy"
-version = "0.4.0-1"
+version = "0.4.1-1"
 
 source = {
     url = "git://github.com/KSDaemon/Loowy.git",
-    tag = "v0.4.0"
+    tag = "v0.4.1"
 }
 
 description = {
@@ -29,8 +29,9 @@ build = {
     install = {
         lua = {
             ['loowy.client'] = 'src/loowy/client.lua',
+            ['loowy.json_serializer'] = 'src/loowy/json_serializer.lua',
+            ['loowy.msgpack_serializer'] = 'src/loowy/msgpack_serializer.lua',
             ['loowy.vardump'] = 'src/loowy/vardump.lua'
-
         }
     }
 }
