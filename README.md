@@ -381,7 +381,7 @@ Also it is possible to abort rpc processing and throw error with custom applicat
 This data will be passed to caller onError callback. 
 
 Exception object with custom data may have next attributes:
-* **uri**. String with custom error uri. Must meet a WAMP Spec URI requirements.
+* **error**. String with custom error uri. Must meet a WAMP Spec URI requirements.
 * **details**. Custom details dictionary object. The details object is used for the future extensibility, 
 and used by the WAMP router. This object not passed to the client. For details see 
 [WAMP specification 6.1](https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-6.1)
