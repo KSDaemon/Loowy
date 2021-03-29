@@ -1,32 +1,34 @@
 Loowy
 =====
 
-Lua WAMP (WebSocket Application Messaging Protocol) client implementation on top of lua-websockets and lib-ev. 
+Lua WAMP (WebSocket Application Messaging Protocol) client implementation on top of lua-websockets and lib-ev.
 
 Table of Contents
 =================
 
-* [Description](#description)
-* [Usage example](#usage-example)
-* [Installation](#installation)
-* [Dependencies](#dependencies)
-* [Loowy client instance methods](#loowy-client-instance-methods)
-    * [options](#optionsopts)
-    * [getOpStatus](#getopstatus)
-    * [getSessionId](#getsessionid)
-    * [connect](#connecturl)
-    * [disconnect](#disconnect)
-    * [abort](#abort)
-    * [Challenge Response Authentication](#challenge-response-authentication)
-    * [subscribe](#subscribetopicuri-callbacks)
-    * [unsubscribe](#unsubscribetopicuri-callbacks)
-    * [publish](#publishtopicuri-payload-callbacks-advancedoptions)
-    * [call](#calltopicuri-payload-callbacks-advancedoptions)
-    * [cancel](#cancelreqid-callbacks-advancedoptions)
-    * [register](#registertopicuri-callbacks)
-    * [unregister](#unregistertopicuri-callbacks)
-* [Copyright and License](#copyright-and-license)
-* [See Also](#see-also)
+- [Loowy](#loowy)
+- [Table of Contents](#table-of-contents)
+- [Description](#description)
+- [Usage example](#usage-example)
+- [Installation](#installation)
+- [Dependencies](#dependencies)
+- [Loowy client instance methods](#loowy-client-instance-methods)
+  - [options([opts])](#optionsopts)
+  - [getOpStatus()](#getopstatus)
+  - [getSessionId()](#getsessionid)
+  - [connect([wampurl])](#connectwampurl)
+  - [disconnect()](#disconnect)
+  - [abort()](#abort)
+  - [Challenge Response Authentication](#challenge-response-authentication)
+  - [subscribe(topicURI, callbacks[, advancedOptions])](#subscribetopicuri-callbacks-advancedoptions)
+  - [unsubscribe(topicURI, callbacks)](#unsubscribetopicuri-callbacks)
+  - [publish(topicURI[, payload[, callbacks[, advancedOptions]]])](#publishtopicuri-payload-callbacks-advancedoptions)
+  - [call(topicURI[, payload[, callbacks[, advancedOptions]]])](#calltopicuri-payload-callbacks-advancedoptions)
+  - [cancel(reqId[, callbacks[, advancedOptions]])](#cancelreqid-callbacks-advancedoptions)
+  - [register(topicURI, callbacks[, advancedOptions])](#registertopicuri-callbacks-advancedoptions)
+  - [unregister(topicURI[, callbacks])](#unregistertopicuri-callbacks)
+- [Copyright and License](#copyright-and-license)
+- [See Also](#see-also)
 
 Description
 ===========
@@ -71,15 +73,15 @@ Installation
 You can install Loowy via luarocks
 
 ```bash
-> luarocks install loowy 
+> luarocks install loowy
 ```
 
-or simply put loowy/client.lua somewhere accessible by lua package.path. 
+or simply put loowy/client.lua somewhere accessible by lua package.path.
 But in this case you also need to install dependencies.
 
-**WARNING!** 
+**WARNING!**
 Loowy depends on [lua-websockets][]. But lua-websockets up to and including v2.2 doesn't contain necessary changes.
-Please manually install lua-websockets from master branch and send message to 
+Please manually install lua-websockets from master branch and send message to
 [lua-websockets maintainer](https://github.com/lipp) to publish new release :)
 
 [Back to TOC](#table-of-contents)
@@ -112,11 +114,11 @@ options() method can be called in two forms:
 Options keys description:
 
 * **debug**. Default value: false. Enable to print some debugging info.
-* **autoReconnect**. Default value: true. Enable autoreconnecting. In case of connection failure, 
+* **autoReconnect**. Default value: true. Enable autoreconnecting. In case of connection failure,
 Loowy will try to reconnect to WAMP server, and if you were subscribed to any topics,
 or had registered some procedures, Loowy will resubscribe to that topics and reregister procedures.
 * **reconnectInterval**. Default value: 2(s). Reconnection Interval in seconds.
-* **maxRetries**. Default value: 25. Max reconnection attempts. After reaching this value [disconnect()](#disconnect) 
+* **maxRetries**. Default value: 25. Max reconnection attempts. After reaching this value [disconnect()](#disconnect)
 will be called.
 * **transportEncoding**. Default value: json. Transport serializer to use. Supported 2 values: "json"/"msgpack".
 * **realm**. Default value: nil. WAMP Realm to join on server. See WAMP spec for additional info.
@@ -158,7 +160,7 @@ Get the WAMP Session ID.
 connect([wampurl])
 ------------------------------------------
 
-Connect to WAMP router. 
+Connect to WAMP router.
 
 Parameters:
 
@@ -176,7 +178,7 @@ Disconnect from WAMP router.
 abort()
 ------------------------------------------
 
-Abort WAMP session establishment. Works only if websocket connection is established, 
+Abort WAMP session establishment. Works only if websocket connection is established,
 but WAMP session establishment is in progress.
 
 [Back to TOC](#table-of-contents)
@@ -214,16 +216,16 @@ Parameters:
 
 * **topicURI**. Required. A string that identifies the topic.
 Must meet a WAMP Spec URI requirements.
-* **callbacks**. If it is a function - it will be treated as published event callback or 
+* **callbacks**. If it is a function - it will be treated as published event callback or
 it can be hash table of callbacks:
     * **onSuccess**: will be called when subscription would be confirmed
     * **onError**: will be called if subscription would be aborted with one hash-table parameter with following attributes:
         * **error**: string error description
         * **details**: hash-table with some error details
-    * **onEvent**:   will be called on receiving published event with one hash-table parameter with following attributes: 
+    * **onEvent**:   will be called on receiving published event with one hash-table parameter with following attributes:
         * **argsList**: array payload (may be omitted)
         * **argsDict**: object payload (may be omitted)
-        * **details**: some publication options object. 
+        * **details**: some publication options object.
 * **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
     * **match**: string matching policy ("prefix"/"wildcard")
 
@@ -244,7 +246,7 @@ Must meet a WAMP Spec URI requirements.
     * **onError**: will be called if unsubscribe would be aborted with one hash-table parameter with following attributes:
         * **error**: string error description
         * **details**: hash-table with some error details
-    * **onEvent**: published event callback instance to remove or it can be not specified, 
+    * **onEvent**: published event callback instance to remove or it can be not specified,
                    in this case all callbacks and subscription will be removed.
 
 or it can be not specified, in this case all callbacks and subscription will be removed.
@@ -283,7 +285,7 @@ is possible to pass array and object-like data simultaneously. In this case pass
     * **exclude_me**: bool flag of receiving publishing event by initiator
                          (if it is subscribed to this topic)
     * **disclose_me**: bool flag of disclosure of publisher identity (its WAMP session ID)
-                         to receivers of a published event 
+                         to receivers of a published event
 
 [Back to TOC](#table-of-contents)
 
@@ -302,16 +304,16 @@ is possible to pass array and object-like data simultaneously. In this case pass
     * **argsDict**: object payload (may be omitted)
 * **callbacks**. If it is a function - it will be treated as result callback function
              or it can be hash table of callbacks:
-    * **onSuccess**: will be called with result on successful call with one hash-table parameter with following attributes: 
+    * **onSuccess**: will be called with result on successful call with one hash-table parameter with following attributes:
         * **details**: hash-table with some additional details
         * **argsList**: optional array containing the original list of positional result
                         elements as returned by the _Callee_
         * **argsDict**: optional hash-table containing the original dictionary of keyword result
-                        elements as returned by the _Callee_  
+                        elements as returned by the _Callee_
     * **onError**: will be called if invocation would be aborted with one hash-table parameter with following attributes:
         * **error**: string error description
         * **details**: hash-table with some error details
-        * **argsList**: optional array containing the original error payload list as returned 
+        * **argsList**: optional array containing the original error payload list as returned
                         by the _Callee_ to the _Dealer_
         * **argsDict**: optional hash-table containing the original error
                         payload dictionary as returned by the _Callee_ to the _Dealer_
@@ -320,7 +322,7 @@ is possible to pass array and object-like data simultaneously. In this case pass
                         to endpoints of a routed call
     * **receive_progress**: bool flag for receiving progressive results. In this case onSuccess function
                         will be called every time on receiving result
-    * **timeout**: integer timeout (in ms) for the call to finish 
+    * **timeout**: integer timeout (in ms) for the call to finish
 
 [Back to TOC](#table-of-contents)
 
@@ -334,10 +336,10 @@ Parameters:
 * **reqId**. Required. Request ID of RPC call that need to be canceled.
 * **callbacks**. Optional. If it is a function - it will be called if successfully sent canceling message
             or it can be hash table of callbacks:
-    * **onSuccess**: will be called if successfully sent canceling message 
-    * **onError**: will be called if some error occurred 
+    * **onSuccess**: will be called if successfully sent canceling message
+    * **onError**: will be called if some error occurred
 * **advancedOptions**. Optional parameters hash table. Must include any or all of the options:
-    * **mode**: string|one of the possible modes: "skip"/"kill"/"killnowait". Skip is default. 
+    * **mode**: string|one of the possible modes: "skip"/"kill"/"killnowait". Skip is default.
 
 [Back to TOC](#table-of-contents)
 
@@ -362,11 +364,11 @@ Must meet a WAMP Spec URI requirements.
     * **invoke**: string invocation policy ("single"/"roundrobin"/"random"/"first"/"last")
 
 Registered PRC during invocation will receive one hash-table argument with following attributes:
- 
+
 * **argsList**: array payload (may be omitted)
 * **argsDict**: object payload (may be omitted)
-* **details**: some invocation options object. One attribute of interest in options is "receive_progress" (boolean), 
-which indicates, that caller is willing to receive progressive results, if possible. Another one is "trustlevel", which 
+* **details**: some invocation options object. One attribute of interest in options is "receive_progress" (boolean),
+which indicates, that caller is willing to receive progressive results, if possible. Another one is "trustlevel", which
 indicates the call trust level, assigned by dealer (of course if it is configured accordingly).
 
 RPC can return no result (undefined), or it must return an object with next attributes:
@@ -375,24 +377,24 @@ RPC can return no result (undefined), or it must return an object with next attr
 * **argsDict**: object result payload (may be omitted)
 * **options**: some result options object. Possible attribute of options is "progress": true, which
 indicates, that it's a progressive result, so there will be more results in future. Be sure to unset "progress"
-on last result message. 
+on last result message.
 
-Also it is possible to abort rpc processing and throw error with custom application specific data. 
-This data will be passed to caller onError callback. 
+Also it is possible to abort rpc processing and throw error with custom application specific data.
+This data will be passed to caller onError callback.
 
 Exception object with custom data may have next attributes:
 * **uri**. String with custom error uri. Must meet a WAMP Spec URI requirements.
-* **details**. Custom details dictionary object. The details object is used for the future extensibility, 
-and used by the WAMP router. This object not passed to the client. For details see 
+* **details**. Custom details dictionary object. The details object is used for the future extensibility,
+and used by the WAMP router. This object not passed to the client. For details see
 [WAMP specification 6.1](https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-6.1)
-* **argsList**. Custom arguments array-like table, this will be forwarded to the caller by the WAMP router's dealer 
+* **argsList**. Custom arguments array-like table, this will be forwarded to the caller by the WAMP router's dealer
 role. Most cases this attribute is used to pass the human readable message to the client.
-* **argsDict**. Custom arguments object-like table, this will be forwarded to the caller by the WAMP router's 
+* **argsDict**. Custom arguments object-like table, this will be forwarded to the caller by the WAMP router's
 dealer role.
 
 For more details see [WAMP specification 9.2.5](https://tools.ietf.org/html/draft-oberstet-hybi-tavendo-wamp-02#section-9.2.5).
 
-**Note:** Any other type of errors and exceptions are catched by Loowy and sent back to the client's side, 
+**Note:** Any other type of errors and exceptions are catched by Loowy and sent back to the client's side,
 not just this type of custom errors. In this case the details of the error can be lost.
 
 [Back to TOC](#table-of-contents)
@@ -405,10 +407,10 @@ RPC unregistration for invocations.
 Parameters:
 
 * **topicURI** - topic to unregister
-* **callbacks** - optional parameter. If it is a function, it will be called on successful unregistration 
+* **callbacks** - optional parameter. If it is a function, it will be called on successful unregistration
             or it can be hash table of callbacks:
     * **onSuccess**: will be called on successful unregistration
-    * **onError**: will be called if unregistration would be aborted 
+    * **onError**: will be called if unregistration would be aborted
 
 [Back to TOC](#table-of-contents)
 
@@ -449,6 +451,10 @@ See Also
 
 [Back to TOC](#table-of-contents)
 
+Thanks JetBrains for the best IDEs and support for open source!
+
+[![jetbrains logo]][jetbrains url]
+
 [WAMP]: http://wamp-proto.org/
 [WAMP specification]: http://wamp-proto.org/
 [Wiola]: http://ksdaemon.github.io/wiola/
@@ -459,3 +465,5 @@ See Also
 [rapidjson]: https://github.com/xpol/lua-rapidjson
 [lua-messagepack]: http://fperrad.github.io/lua-MessagePack/
 [busted]: http://olivinelabs.com/busted/
+[jetbrains logo]: jetbrains.svg
+[jetbrains url]: (https://www.jetbrains.com)
